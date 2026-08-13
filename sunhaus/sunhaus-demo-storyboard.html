@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SUNHAUS — a Device Connect smart-home demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0C1220; --panel:#121B2B; --line:#22304A; --line2:#2C3D5C;
+    --ink:#E9EEF6; --muted:#8494AB; --faint:#5A6A84;
+    --solar:#FFB648; --batt:#55D98A; --grid:#9B8CFF;
+    --msg:#5AC8E8; --heat:#F4795B; --cool:#6FC3E8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--ink); font-family:'Space Grotesk',system-ui,sans-serif; min-height:100vh}
+  .wrap{max-width:1280px; margin:0 auto; padding:22px 20px 40px}
+  header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px}
+  h1{font-size:24px; font-weight:700; letter-spacing:.5px}
+  h1 .dc{color:var(--msg)}
+  .sub{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted)}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:10px}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .dot{width:10px; height:10px; border-radius:2px; display:inline-block}
+  .stage{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--panel)}
+  svg{display:block; width:100%; height:auto}
+  .controls{display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid var(--line); border-top:none; border-radius:0 0 10px 10px; background:#0F1626; flex-wrap:wrap}
+  button{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink); background:#1B2740; border:1px solid var(--line2); border-radius:6px; padding:6px 14px; cursor:pointer}
+  button:hover{background:#243354}
+  button:focus-visible{outline:2px solid var(--msg); outline-offset:2px}
+  input[type=range]{flex:1; min-width:200px; accent-color:var(--msg)}
+  .clock{font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--solar); min-width:120px}
+  .speed{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted)}
+  .log-wrap{margin-top:16px; border:1px solid var(--line); border-radius:10px; background:#0A1019}
+  .log-head{display:flex; justify-content:space-between; padding:8px 14px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted)}
+  #log{font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.7; padding:10px 14px; height:190px; overflow-y:auto}
+  #log .t{color:var(--faint)}
+  #log .dev{font-weight:600}
+  #log div{white-space:pre-wrap}
+  .foot{margin-top:14px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--faint)}
+  .foot a{color:var(--msg); text-decoration:none}
+  /* svg text */
+  text{font-family:'IBM Plex Mono',monospace}
+  .lbl{fill:var(--muted); font-size:10px}
+  .id{fill:var(--msg); font-size:9px}
+  .state{fill:var(--ink); font-size:10px; font-weight:600}
+  .flow{fill:none; stroke-width:2.5; stroke-linecap:round; stroke-dasharray:6 8; opacity:0}
+  .flow.on{opacity:.9; animation:dash 1.1s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-14}}
+  @media (prefers-reduced-motion: reduce){ .flow.on{animation:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SUNHAUS <span style="color:var(--faint)">·</span> a <span class="dc">Device&nbsp;Connect</span> smart-home demo</h1>
+    <div class="sub">arm/device-connect · zenoh D2D · every appliance is a DeviceDriver, every decision is an agent</div>
+  </header>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--solar)"></span>solar energy</span>
+    <span><span class="dot" style="background:var(--batt)"></span>battery</span>
+    <span><span class="dot" style="background:var(--grid)"></span>grid</span>
+    <span><span class="dot" style="background:var(--heat)"></span>heat</span>
+    <span><span class="dot" style="background:var(--cool)"></span>cooling</span>
+    <span><span class="dot" style="background:var(--msg); border-radius:50%"></span>device connect message</span>
+  </div>
+
+  <div class="stage">
+  <svg id="scene" viewBox="0 0 1240 660" role="img" aria-label="Cutaway of a house with PV, battery, inverter, heat pump, AC, wallbox, two EVs, weather station and camera, all connected by a Device Connect bus">
+    <!-- sky -->
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop id="sky0" offset="0" stop-color="#1A2440"/>
+        <stop id="sky1" offset="1" stop-color="#2B3A61"/>
+      </linearGradient>
+      <linearGradient id="earth" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#141D30"/>
+        <stop offset="1" stop-color="#0E1422"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="1240" height="470" fill="url(#sky)"/>
+    <!-- sun & moon -->
+    <circle id="sun" cx="140" cy="420" r="18" fill="var(--solar)" opacity="0"/>
+    <circle id="moon" cx="1060" cy="120" r="12" fill="#C9D4E8" opacity="0"/>
+    <circle id="moonbite" cx="1066" cy="116" r="10" fill="url(#sky)" opacity="0"/>
+    <!-- clouds -->
+    <g id="clouds" opacity="0" fill="#31405F">
+      <ellipse cx="380" cy="110" rx="70" ry="18"/><ellipse cx="440" cy="98" rx="50" ry="14"/>
+      <ellipse cx="760" cy="90" rx="80" ry="20"/><ellipse cx="700" cy="104" rx="46" ry="13"/>
+    </g>
+
+    <!-- ground / underground -->
+    <rect x="0" y="470" width="1240" height="190" fill="url(#earth)"/>
+    <line x1="0" y1="470" x2="1240" y2="470" stroke="#33456A" stroke-width="2"/>
+
+    <!-- ============ GRID PYLON (left) ============ -->
+    <g id="g-grid">
+      <path d="M40 470 L60 300 L80 470 M46 420 L74 420 M50 380 L70 380 M55 340 L65 340" stroke="#4A5B7E" stroke-width="3" fill="none"/>
+      <line x1="60" y1="300" x2="60" y2="290" stroke="#4A5B7E" stroke-width="3"/>
+      <path d="M60 300 C 100 320, 130 320, 168 336" stroke="#4A5B7E" stroke-width="1.6" fill="none"/>
+      <text class="lbl" x="24" y="492">public grid</text>
+      <text class="id" x="24" y="505">meter-01</text>
+      <text id="st-grid" class="state" x="24" y="522">idle</text>
+    </g>
+
+    <!-- ============ HOUSE ============ -->
+    <!-- basement box -->
+    <rect x="150" y="474" width="360" height="96" fill="#101827" stroke="var(--line2)"/>
+    <!-- walls ground floor -->
+    <rect x="150" y="300" width="360" height="174" fill="#16223A" stroke="var(--line2)"/>
+    <!-- roof -->
+    <path d="M136 300 L330 150 L524 300 Z" fill="#1B2A47" stroke="var(--line2)"/>
+    <!-- PV array on left roof pitch -->
+    <g id="g-pv" transform="rotate(-37.7 330 150)">
+      <g transform="translate(330 150)">
+        <rect x="12" y="16" width="150" height="58" fill="#0F1B33" stroke="var(--solar)" stroke-width="1.4"/>
+        <path d="M12 35 h150 M12 55 h150 M42 16 v58 M72 16 v58 M102 16 v58 M132 16 v58" stroke="#33507F" stroke-width="1"/>
+      </g>
+    </g>
+    <text class="lbl" x="170" y="212">PV array 9.6 kWp</text>
+    <text id="st-pv" class="state" x="170" y="228">0.0 kW</text>
+
+    <!-- window + door -->
+    <rect x="330" y="340" width="70" height="60" fill="#0F1B33" stroke="var(--line2)"/>
+    <path d="M330 370 h70 M365 340 v60" stroke="#2C3D5C"/>
+    <rect x="250" y="396" width="46" height="78" fill="#0F1B33" stroke="var(--line2)"/>
+
+    <!-- HOME AGENT hub (living room) -->
+    <g id="g-agent">
+      <rect x="168" y="430" width="56" height="40" rx="6" fill="#0E1626" stroke="var(--msg)" stroke-width="1.5"/>
+      <circle cx="196" cy="444" r="5" fill="var(--msg)">
+        <animate attributeName="opacity" values="1;.35;1" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <text class="lbl" x="164" y="424">home agent</text>
+      <text class="id" x="230" y="446">agent-home</text>
+      <text id="st-agent" class="state" x="230" y="460">booting</text>
+    </g>
+
+    <!-- AC: indoor unit + outdoor unit -->
+    <g id="g-hvac">
+      <rect x="440" y="316" width="60" height="20" rx="6" fill="#0E1626" stroke="var(--cool)"/>
+      <path d="M448 340 q6 10 0 20 M462 340 q6 10 0 20 M476 340 q6 10 0 20" id="hvac-air" stroke="var(--cool)" fill="none" opacity="0"/>
+      <rect x="530" y="428" width="44" height="42" rx="4" fill="#0E1626" stroke="var(--cool)"/>
+      <circle cx="552" cy="449" r="13" fill="none" stroke="var(--cool)"/>
+      <path d="M552 436 v26 M539 449 h26" stroke="var(--cool)"/>
+      <text class="lbl" x="418" y="310">air conditioning</text>
+      <text class="id" x="503" y="326">hvac-01</text>
+      <text id="st-hvac" class="state" x="503" y="340">off</text>
+    </g>
+
+    <!-- basement: inverter + battery + heat pump -->
+    <g id="g-inv">
+      <rect x="180" y="490" width="70" height="66" rx="4" fill="#0E1626" stroke="var(--solar)" stroke-width="1.5"/>
+      <path d="M192 512 h18 M192 524 h30 M192 536 h24" stroke="#3A4F78"/>
+      <circle cx="238" cy="502" r="4" fill="var(--solar)"/>
+      <text class="lbl" x="180" y="486">inverter</text>
+      <text class="id" x="182" y="580">inverter-01</text>
+    </g>
+    <g id="g-batt">
+      <rect x="278" y="486" width="52" height="70" rx="4" fill="#0E1626" stroke="var(--batt)" stroke-width="1.5"/>
+      <rect id="soc-fill" x="284" y="548" width="40" height="2" fill="var(--batt)" opacity=".9"/>
+      <text class="lbl" x="272" y="482">battery 12 kWh</text>
+      <text class="id" x="278" y="580">battery-01</text>
+      <text id="st-batt" class="state" x="336" y="500">SoC 35%</text>
+    </g>
+    <g id="g-hp">
+      <rect x="410" y="490" width="76" height="66" rx="4" fill="#0E1626" stroke="var(--heat)" stroke-width="1.5"/>
+      <circle cx="434" cy="522" r="15" fill="none" stroke="var(--heat)"/>
+      <path d="M434 509 v26 M421 522 h26" stroke="var(--heat)"/>
+      <rect x="458" y="500" width="18" height="46" rx="3" fill="none" stroke="var(--heat)"/>
+      <text class="lbl" x="410" y="486">heat pump + DHW</text>
+      <text class="id" x="410" y="580">heatpump-01</text>
+      <text id="st-hp" class="state" x="494" y="522">standby</text>
+    </g>
+
+    <!-- ============ WEATHER MAST + CAMERA ============ -->
+    <g id="g-weather">
+      <line x1="580" y1="470" x2="580" y2="188" stroke="#4A5B7E" stroke-width="3"/>
+      <line x1="580" y1="196" x2="560" y2="184" stroke="#4A5B7E" stroke-width="2"/>
+      <line x1="580" y1="196" x2="600" y2="184" stroke="#4A5B7E" stroke-width="2"/>
+      <circle cx="560" cy="184" r="5" fill="none" stroke="var(--ink)"/>
+      <circle cx="600" cy="184" r="5" fill="none" stroke="var(--ink)"/>
+      <rect x="568" y="210" width="24" height="14" rx="3" fill="#0E1626" stroke="var(--msg)"/>
+      <text class="lbl" x="596" y="205">weather station</text>
+      <text class="id" x="596" y="218">weather-01</text>
+      <text id="st-weather" class="state" x="596" y="232">—</text>
+      <!-- camera -->
+      <g id="g-cam">
+        <rect x="572" y="268" width="26" height="16" rx="4" fill="#0E1626" stroke="var(--msg)"/>
+        <circle cx="596" cy="276" r="4" fill="var(--msg)"/>
+        <path id="cam-fov" d="M600 276 L680 246 L680 306 Z" fill="var(--msg)" opacity="0"/>
+        <text class="lbl" x="606" y="272">camera</text>
+        <text class="id" x="606" y="284">cam-01</text>
+      </g>
+      <text class="lbl" x="530" y="250">☁ internet weather feed ⇄</text>
+    </g>
+
+    <!-- ============ CARPORT ============ -->
+    <g id="g-carport">
+      <path d="M648 336 L1080 336 L1068 322 L660 322 Z" fill="#1B2A47" stroke="var(--line2)"/>
+      <line x1="660" y1="336" x2="660" y2="470" stroke="var(--line2)" stroke-width="4"/>
+      <line x1="1068" y1="336" x2="1068" y2="470" stroke="var(--line2)" stroke-width="4"/>
+    </g>
+    <!-- wallbox -->
+    <g id="g-wb">
+      <rect x="846" y="382" width="34" height="88" rx="5" fill="#0E1626" stroke="var(--solar)" stroke-width="1.5"/>
+      <circle cx="863" cy="402" r="7" fill="none" stroke="var(--solar)"/>
+      <path id="wb-cable" d="M863 452 C 863 470, 820 466, 806 448" stroke="var(--solar)" stroke-width="2.5" fill="none" opacity="0"/>
+      <text class="lbl" x="836" y="376">wallbox 11 kW</text>
+      <text class="id" x="846" y="500">wallbox-01</text>
+      <text id="st-wb" class="state" x="846" y="516">idle</text>
+    </g>
+    <!-- EV 1 (blue) -->
+    <g id="g-ev1">
+      <g id="ev1-body">
+        <path d="M676 452 q4 -22 30 -24 l18 -14 q26 -8 52 0 l16 14 q22 4 24 24 l0 8 -140 0 z" fill="#173A63" stroke="#3D6EA8"/>
+        <circle cx="706" cy="462" r="10" fill="#0A1019" stroke="#3D6EA8"/>
+        <circle cx="786" cy="462" r="10" fill="#0A1019" stroke="#3D6EA8"/>
+        <circle cx="806" cy="446" r="3.5" fill="var(--solar)" opacity="0" id="ev1-port"/>
+      </g>
+      <text class="id" x="676" y="500">ev-blue</text>
+      <text id="st-ev1" class="state" x="676" y="516">SoC 41%</text>
+    </g>
+    <!-- EV 2 (red) -->
+    <g id="g-ev2">
+      <path d="M896 452 q4 -22 30 -24 l18 -14 q26 -8 52 0 l16 14 q22 4 24 24 l0 8 -140 0 z" fill="#5A2330" stroke="#A85268"/>
+      <circle cx="926" cy="462" r="10" fill="#0A1019" stroke="#A85268"/>
+      <circle cx="1006" cy="462" r="10" fill="#0A1019" stroke="#A85268"/>
+      <text class="id" x="896" y="500">ev-red</text>
+      <text id="st-ev2" class="state" x="896" y="516">SoC 63%</text>
+    </g>
+
+    <!-- ============ ENERGY FLOWS ============ -->
+    <path id="f-pv"   class="flow" d="M300 210 C 280 300, 230 420, 218 488" stroke="var(--solar)"/>
+    <path id="f-batt" class="flow" d="M252 522 H 276" stroke="var(--batt)"/>
+    <path id="f-house" class="flow" d="M250 490 C 260 470, 300 452, 330 448" stroke="var(--batt)"/>
+    <path id="f-gridin" class="flow" d="M80 452 C 110 466, 140 500, 178 512" stroke="var(--grid)"/>
+    <path id="f-wb"   class="flow" d="M250 540 C 420 600, 700 600, 852 472" stroke="var(--solar)"/>
+    <path id="f-heat" class="flow" d="M448 488 C 452 460, 456 430, 458 404" stroke="var(--heat)"/>
+
+    <!-- ============ DEVICE CONNECT BUS ============ -->
+    <g id="bus">
+      <line x1="110" y1="614" x2="1090" y2="614" stroke="var(--msg)" stroke-width="2.5" opacity=".85"/>
+      <line x1="110" y1="614" x2="1090" y2="614" stroke="var(--msg)" stroke-width="8" opacity=".12"/>
+      <text x="110" y="640" fill="var(--msg)" font-size="11" font-weight="600">DEVICE CONNECT · zenoh D2D bus (multicast scouting — no broker)</text>
+      <!-- drops -->
+      <g stroke="var(--msg)" stroke-width="1.2" opacity=".55">
+        <line x1="120" y1="530" x2="120" y2="614"/>  <!-- meter -->
+        <line x1="196" y1="470" x2="196" y2="614"/>  <!-- agent -->
+        <line x1="215" y1="556" x2="215" y2="614"/>  <!-- inverter -->
+        <line x1="304" y1="556" x2="304" y2="614"/>  <!-- battery -->
+        <line x1="448" y1="556" x2="448" y2="614"/>  <!-- heatpump -->
+        <line x1="552" y1="470" x2="552" y2="614"/>  <!-- hvac outdoor -->
+        <line x1="580" y1="470" x2="580" y2="614"/>  <!-- weather+cam -->
+        <line x1="746" y1="470" x2="746" y2="614"/>  <!-- ev1 -->
+        <line x1="863" y1="470" x2="863" y2="614"/>  <!-- wallbox -->
+        <line x1="966" y1="470" x2="966" y2="614"/>  <!-- ev2 -->
+      </g>
+      <g fill="var(--msg)">
+        <circle cx="120" cy="614" r="4"/><circle cx="196" cy="614" r="5"/><circle cx="215" cy="614" r="4"/>
+        <circle cx="304" cy="614" r="4"/><circle cx="448" cy="614" r="4"/><circle cx="552" cy="614" r="4"/>
+        <circle cx="580" cy="614" r="4"/><circle cx="746" cy="614" r="4"/><circle cx="863" cy="614" r="4"/>
+        <circle cx="966" cy="614" r="4"/>
+      </g>
+    </g>
+    <g id="packets"></g>
+  </svg>
+
+  <div class="controls">
+    <button id="btn-play">▶ play</button>
+    <button id="btn-restart">↺ restart</button>
+    <span class="clock" id="clock">day 06:00 · t 0:00</span>
+    <input type="range" id="scrub" min="0" max="180" step="0.1" value="0" aria-label="demo timeline">
+    <span class="speed"><label><input type="checkbox" id="fast"> 6× (30 s preview)</label></span>
+  </div>
+  </div>
+
+  <div class="log-wrap">
+    <div class="log-head"><span>$ devctl tail --all &nbsp;·&nbsp; message log</span><span>10 devices · 1 agent</span></div>
+    <div id="log" aria-live="polite"></div>
+  </div>
+
+  <div class="foot">Storyboard for the 3-minute demo: one simulated day (06:00–22:00) compressed into 180 s. Built on <a href="https://github.com/arm/device-connect">github.com/arm/device-connect</a> — each element above runs as its own DeviceRuntime process with @rpc, @emit and @periodic behaviors.</div>
+</div>
+
+<script>
+// ---- bus node x-positions ----
+const NODE = {meter:120, agent:196, inverter:215, battery:304, heatpump:448, hvac:552, weather:580, cam:580, ev1:746, wallbox:863, ev2:966};
+const BUS_Y = 614;
+const COLORS = {msg:'#5AC8E8', solar:'#FFB648', batt:'#55D98A', grid:'#9B8CFF', heat:'#F4795B', cool:'#6FC3E8'};
+
+// ---- helpers ----
+const $ = id => document.getElementById(id);
+const setText = (id, s) => { const el = $(id); if (el) el.textContent = s; };
+const flow = (id, on) => $(id).classList.toggle('on', on);
+const lerp = (a,b,t)=>a+(b-a)*t;
+function lerpColor(c1,c2,t){
+  const p=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+  const [r1,g1,b1]=p(c1),[r2,g2,b2]=p(c2);
+  return `rgb(${Math.round(lerp(r1,r2,t))},${Math.round(lerp(g1,g2,t))},${Math.round(lerp(b1,b2,t))})`;
+}
+const simClock = t => { const h = 6 + t*16/180; const hh=Math.floor(h), mm=Math.floor((h-hh)*60); return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; };
+
+// ---- timeline of events ----
+// each: t(s), dev, css color key, log text, packet {from,to,label,color}, apply() side effects
+const EVENTS = [
+ {t:0.5, dev:'agent-home', c:'msg', log:'zenoh scouting… 10 peers discovered (D2D, no broker)', pk:{from:'agent',to:'ev2',label:'discover',color:'msg'},
+  fx:()=>{setText('st-agent','orchestrating'); setText('st-grid','import 0.2 kW');}},
+ {t:3,   dev:'weather-01', c:'msg', log:'@periodic forecast → sunny, max 31°C · PV estimate 28.4 kWh', pk:{from:'weather',to:'agent',label:'wx.forecast',color:'msg'},
+  fx:()=>setText('st-weather','sunny 31°C')},
+ {t:6,   dev:'inverter-01', c:'solar', log:'@emit pv.forecast {today: 28.4 kWh, peak: 12:30} · battery SoC 35%', pk:{from:'inverter',to:'agent',label:'pv.forecast',color:'solar'}},
+ {t:11,  dev:'inverter-01', c:'solar', log:'sunrise ramp — PV 0.8 kW, feeding house baseload', pk:{from:'inverter',to:'agent',label:'telemetry',color:'solar'},
+  fx:()=>{flow('f-pv',true); setText('st-pv','0.8 kW'); setText('st-grid','0 kW');}},
+ {t:14,  dev:'cam-01', c:'msg', log:'@emit driveway.motion — ev-blue departing', pk:{from:'cam',to:'agent',label:'motion',color:'msg'},
+  fx:()=>{$('cam-fov').setAttribute('opacity','0.18'); setTimeout(()=>$('cam-fov').setAttribute('opacity','0'),1500);}},
+ {t:15.5,dev:'wallbox-01', c:'solar', log:'@emit plug.disconnected — agent marks ev-blue AWAY', pk:{from:'wallbox',to:'agent',label:'plug.event',color:'solar'},
+  fx:()=>{$('g-ev1').setAttribute('opacity','0'); setText('st-wb','idle')}},
+ {t:28,  dev:'heatpump-01', c:'heat', log:'rpc request_window(load=3 kWh DHW) → agent replies: 11:30–13:00 (solar peak)', pk:{from:'heatpump',to:'agent',label:'request_window',color:'heat'},
+  fx:()=>setText('st-hp','scheduled 11:30')},
+ {t:45,  dev:'inverter-01', c:'batt', log:'PV 4.6 kW · surplus → battery charging 2.0 kW · SoC 48%', pk:{from:'battery',to:'agent',label:'soc 48%',color:'batt'},
+  fx:()=>{flow('f-batt',true); setText('st-pv','4.6 kW'); setText('st-batt','SoC 48% ▲'); soc(48);}},
+ {t:62,  dev:'agent-home', c:'heat', log:'invoke_device("heatpump-01","start_dhw") — heating water on sunshine', pk:{from:'agent',to:'heatpump',label:'start_dhw',color:'heat'},
+  fx:()=>{flow('f-heat',true); setText('st-hp','DHW 2.4 kW');}},
+ {t:73,  dev:'inverter-01', c:'solar', log:'solar peak 8.1 kW · SoC 71% · agent pre-cools house for hot afternoon', pk:{from:'agent',to:'hvac',label:'set 22.5°C',color:'cool'},
+  fx:()=>{setText('st-pv','8.1 kW'); setText('st-batt','SoC 71% ▲'); soc(71); setText('st-hvac','pre-cool 22.5°C'); $('hvac-air').setAttribute('opacity','0.9');}},
+ {t:90,  dev:'cam-01', c:'msg', log:'sky-cam cloud detection + internet nowcast agree: front inbound (−18% PV)', pk:{from:'cam',to:'inverter',label:'nowcast',color:'msg'},
+  fx:()=>{$('clouds').setAttribute('opacity','0.9'); setText('st-weather','clouding over');}},
+ {t:92,  dev:'agent-home', c:'cool', log:'plan revised → hvac eco mode, heat pump paused, battery holds charge', pk:{from:'agent',to:'hvac',label:'eco',color:'cool'},
+  fx:()=>{setText('st-hvac','eco'); setText('st-hp','paused'); flow('f-heat',false); setText('st-pv','3.1 kW');}},
+ {t:107, dev:'weather-01', c:'msg', log:'front passed · PV back to 5.2 kW · SoC 88%', pk:{from:'weather',to:'agent',label:'wx.update',color:'msg'},
+  fx:()=>{$('clouds').setAttribute('opacity','0'); setText('st-pv','5.2 kW'); setText('st-batt','SoC 88%'); soc(88); setText('st-weather','clearing');}},
+ {t:129, dev:'cam-01', c:'msg', log:'driveway.motion — ev-blue returned', pk:{from:'cam',to:'agent',label:'motion',color:'msg'},
+  fx:()=>{$('g-ev1').setAttribute('opacity','1');}},
+ {t:131, dev:'wallbox-01', c:'solar', log:'plug.connected · handshake: ev-blue needs 60% by 07:00 (≈28 kWh)', pk:{from:'ev1',to:'wallbox',label:'need 60%@07:00',color:'solar'},
+  fx:()=>{$('wb-cable').setAttribute('opacity','1'); $('ev1-port').setAttribute('opacity','1');}},
+ {t:133, dev:'agent-home', c:'solar', log:'charge plan: 3 kW from PV surplus now, remainder off-peak from 01:00', pk:{from:'agent',to:'wallbox',label:'charge_plan',color:'solar'},
+  fx:()=>{flow('f-wb',true); setText('st-wb','PV-charge 3 kW'); setText('st-ev1','SoC 41% ▲');}},
+ {t:143, dev:'inverter-01', c:'batt', log:'sunset · PV 0.3 kW → battery discharging 1.8 kW for dinner peak', pk:{from:'battery',to:'agent',label:'discharge',color:'batt'},
+  fx:()=>{flow('f-pv',false); flow('f-batt',false); flow('f-wb',false); flow('f-house',true); setText('st-pv','0.0 kW'); setText('st-batt','SoC 84% ▼'); soc(84); setText('st-wb','paused'); $('hvac-air').setAttribute('opacity','0');}},
+ {t:157, dev:'ev-red', c:'grid', log:'ev-red rpc request_charge(top-up 15%) → agent staggers start to 22:30 (grid-peak cap)', pk:{from:'ev2',to:'agent',label:'request_charge',color:'grid'},
+  fx:()=>{setText('st-ev2','SoC 63% · queued'); setText('st-grid','capped');}},
+ {t:169, dev:'heatpump-01', c:'heat', log:'night setback 19°C · house load 0.4 kW', pk:{from:'agent',to:'heatpump',label:'setback',color:'heat'},
+  fx:()=>{setText('st-hp','setback 19°C'); setText('st-hvac','off');}},
+ {t:178, dev:'agent-home', c:'msg', log:'daily stats — PV 24.1 kWh · self-consumption 78% · grid import 6.2 kWh · SoC 54%', pk:{from:'agent',to:'meter',label:'stats',color:'msg'},
+  fx:()=>{setText('st-batt','SoC 54%'); soc(54); flow('f-house',false); setText('st-agent','day complete');}}
+];
+
+function soc(pct){
+  const h = Math.max(2, 64*pct/100);
+  const f = $('soc-fill');
+  f.setAttribute('height', h);
+  f.setAttribute('y', 550 - h);
+}
+
+// ---- sky keyframes ----
+const SKY = [
+ {t:0,   top:'#1A2440', bot:'#3E4E7A'},   // dawn
+ {t:35,  top:'#27466E', bot:'#5E7BAE'},   // morning
+ {t:75,  top:'#2E5E92', bot:'#7FA0CC'},   // midday
+ {t:120, top:'#2A4A78', bot:'#6E86B2'},   // afternoon
+ {t:143, top:'#2A2C55', bot:'#B06A55'},   // sunset
+ {t:160, top:'#141B33', bot:'#232E4E'},   // dusk
+ {t:180, top:'#0D1326', bot:'#182238'}    // night
+];
+function sky(t){
+  let a=SKY[0], b=SKY[SKY.length-1];
+  for(let i=0;i<SKY.length-1;i++){ if(t>=SKY[i].t && t<=SKY[i+1].t){a=SKY[i]; b=SKY[i+1]; break;} }
+  const k=(t-a.t)/Math.max(0.001,(b.t-a.t));
+  $('sky0').setAttribute('stop-color', lerpColor(a.top,b.top,k));
+  $('sky1').setAttribute('stop-color', lerpColor(a.bot,b.bot,k));
+  // sun arc: visible 11..143
+  if(t>=9 && t<=145){
+    const p=(t-9)/(145-9);
+    const cx=lerp(120,1120,p), cy=380-Math.sin(p*Math.PI)*300;
+    $('sun').setAttribute('cx',cx); $('sun').setAttribute('cy',cy);
+    $('sun').setAttribute('opacity', Math.min(1,Math.sin(p*Math.PI)*1.6));
+  } else $('sun').setAttribute('opacity',0);
+  const m = t>150 ? Math.min(1,(t-150)/12) : 0;
+  $('moon').setAttribute('opacity',m); $('moonbite').setAttribute('opacity',m);
+}
+
+// ---- packets ----
+const live = [];
+function spawnPacket(pk){
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  const x1=NODE[pk.from], x2=NODE[pk.to];
+  const w = Math.max(46, pk.label.length*6.4+14);
+  g.innerHTML = `<rect x="${-w/2}" y="-9" width="${w}" height="18" rx="9" fill="#0A1019" stroke="${COLORS[pk.color]}" stroke-width="1.4"/>
+                 <text x="0" y="4" text-anchor="middle" font-size="9.5" fill="${COLORS[pk.color]}">${pk.label}</text>`;
+  g.setAttribute('transform',`translate(${x1},${BUS_Y})`);
+  $('packets').appendChild(g);
+  live.push({g,x1,x2,born:performance.now(),dur:1400});
+}
+function tickPackets(now){
+  for(let i=live.length-1;i>=0;i--){
+    const p=live[i], k=(now-p.born)/p.dur;
+    if(k>=1){ p.g.remove(); live.splice(i,1); continue; }
+    const e = k<0.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
+    const x=lerp(p.x1,p.x2,e);
+    const lift = Math.sin(k*Math.PI)*10;
+    p.g.setAttribute('transform',`translate(${x},${BUS_Y-lift})`);
+    p.g.setAttribute('opacity', k>0.85 ? (1-k)/0.15 : 1);
+  }
+}
+
+// ---- log ----
+function logLine(t, dev, c, text){
+  const d=document.createElement('div');
+  d.innerHTML=`<span class="t">[${simClock(t)}]</span> <span class="dev" style="color:${COLORS[c]}">${dev.padEnd(12,' ')}</span> ${text}`;
+  $('log').appendChild(d);
+  $('log').scrollTop=$('log').scrollHeight;
+}
+
+// ---- engine ----
+let T=0, playing=false, last=null, fired=new Set();
+function resetWorld(){
+  fired.clear(); $('log').innerHTML=''; $('packets').innerHTML=''; live.length=0;
+  ['f-pv','f-batt','f-house','f-gridin','f-wb','f-heat'].forEach(f=>flow(f,false));
+  $('g-ev1').setAttribute('opacity','1'); $('wb-cable').setAttribute('opacity','0');
+  $('ev1-port').setAttribute('opacity','0'); $('clouds').setAttribute('opacity','0');
+  $('hvac-air').setAttribute('opacity','0'); $('cam-fov').setAttribute('opacity','0');
+  setText('st-agent','booting'); setText('st-pv','0.0 kW'); setText('st-batt','SoC 35%'); soc(35);
+  setText('st-hp','standby'); setText('st-hvac','off'); setText('st-wb','idle');
+  setText('st-ev1','SoC 41%'); setText('st-ev2','SoC 63%'); setText('st-weather','—'); setText('st-grid','idle');
+}
+function applyUpTo(t){ // used on scrub: replay silently
+  resetWorld();
+  EVENTS.forEach(ev=>{ if(ev.t<=t){ fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log);} });
+}
+function step(now){
+  if(last==null) last=now;
+  const dt=(now-last)/1000; last=now;
+  if(playing){
+    T += dt * ($('fast').checked ? 6 : 1);
+    if(T>=180){ T=180; playing=false; $('btn-play').textContent='▶ play'; }
+    $('scrub').value=T;
+  }
+  EVENTS.forEach(ev=>{
+    if(playing && ev.t<=T && !fired.has(ev.t)){
+      fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log); spawnPacket(ev.pk);
+    }
+  });
+  sky(T);
+  const s=Math.floor(T);
+  $('clock').textContent=`day ${simClock(T)} · t ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  tickPackets(now);
+  requestAnimationFrame(step);
+}
+$('btn-play').addEventListener('click',()=>{
+  if(T>=180){T=0; applyUpTo(0);}
+  playing=!playing;
+  $('btn-play').textContent=playing?'⏸ pause':'▶ play';
+});
+$('btn-restart').addEventListener('click',()=>{ T=0; playing=true; $('btn-play').textContent='⏸ pause'; applyUpTo(0); });
+$('scrub').addEventListener('input',e=>{ T=parseFloat(e.target.value); playing=false; $('btn-play').textContent='▶ play'; applyUpTo(T); });
+
+resetWorld();
+requestAnimationFrame(step);
+</script>
+</body>
+</html>
