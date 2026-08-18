@@ -1,69 +1,72 @@
 # HANDOFF — Arm Device Connect demo (SUNHAUS)
 
-Running-start notes for continuing this work. Last updated 2026-08-13 (evening).
+Running-start notes. Last updated 2026-08-18. **The demo is built and runs for real.**
 
 ## Goal
 
 Build **SUNHAUS**, a smart-home energy demo on top of [`arm/device-connect`](https://github.com/arm/device-connect),
-iterate on it in this public playground, and promote the pieces worth keeping into a pull request back to Arm.
+iterate here in this public playground, and promote it into a pull request back to Arm
+as an `examples/sunhaus` contribution.
 
-Full concept: [`sunhaus/CONCEPT.md`](sunhaus/CONCEPT.md). Animated storyboard: [`sunhaus/sunhaus-demo-storyboard.html`](sunhaus/sunhaus-demo-storyboard.html).
+Full concept: [`sunhaus/CONCEPT.md`](sunhaus/CONCEPT.md) · How-to + what's-real: [`sunhaus/README.md`](sunhaus/README.md)
+· Architecture: [`sunhaus/docs/architecture.md`](sunhaus/docs/architecture.md) · Animated storyboard:
+[`sunhaus/sunhaus-demo-storyboard.html`](sunhaus/sunhaus-demo-storyboard.html).
 
 ## Repo layout
 
-- **`arm-device-connect-playground/`** (this repo, public) — sandbox where demos are built in the open.
+- **`arm-device-connect-playground/`** (this repo, public) — the sandbox; SUNHAUS lives in `sunhaus/`.
 - **`device-connect/`** — clone of the fork [`quarterbit/device-connect`](https://github.com/quarterbit/device-connect)
-  (✅ cloned, `upstream` remote wired to `arm/device-connect`, at v0.2.5). PRs go through the fork.
-- AI thinking / chat history stays in the Claude Project **"Arm Device Connect Demo"**, out of the repo.
+  (`upstream` → `arm/device-connect`, at v0.2.5). PRs go through the fork.
+- **`.venv/`** (untracked) — Python 3.12 venv at `E:\repos\device-connect\.venv` with `eclipse-zenoh`,
+  `device-connect-edge`, `device-connect-agent-tools` (editable from the fork) + pytest. This is how the demo was run.
 
-## Current state (what changed today)
+## Current state — DONE
 
-- ✅ Full **API audit of arm/device-connect v0.2.5** done (see "API facts" below — these are verified against source).
-- ✅ Design revision after review: **skycam dropped** (weather station's own irradiance + internet radar nowcast
-  detect the cloud front), **indoor climate sensor (`climate-01`) and washing machine (`washer-01`) added**,
-  **EVs announce `heading_home`** (ETA + intended charge energy) from the road. Roster is now 11 devices + agent.
-- ✅ Storyboard rewritten to the new cast: PV panel placed flush on roof pitch, washer + climate sensor drawn,
-  heading_home beat, underscore event names, `subscribe("event(*)")` log header, **top-right LLM consumption
-  meter** (ticks per agent decision; Sonnet $3/$15 per Mtok; "policy mode $0.00"). Visually verified in browser.
-- ✅ CONCEPT.md rewritten: roster, beats, "What is real" honesty section (§2), request/grant idiom,
-  LLM token-cost analysis (§8: ~420k in / 24k out per day ≈ $1.60 Sonnet uncached, $0 in policy mode).
-- ✅ Foundation code exists in `sunhaus/sunhaus/`: `simclock.py` (shared epoch+speed via env, no clock topic),
-  `scenario.py` (deterministic world physics), `models.py` (payload dataclasses incl. HeadingHome, WasherJob).
-- ⬜ Device drivers, agent, runner, tests **not yet written** (tasks #3–#5). API facts below make this mechanical.
-- ⬜ `pip install eclipse-zenoh device-connect-edge device-connect-agent-tools` not yet verified on this machine
-  (Python 3.12.10 present, needs >=3.11 ✅).
+SUNHAUS is a **real, nothing-faked** demo, verified end-to-end on this Windows box:
 
-## API facts (verified against the clone — build against these)
+- ✅ 11 device drivers in `sunhaus/sunhaus/devices/` — each a real `DeviceRuntime` process
+  (inverter, battery, wallbox, ev-blue/ev-red, heatpump, hvac, washer, climate, weather, meter).
+- ✅ Real Zenoh D2D discovery (multicast peer scouting, no broker), real `@rpc`/`@emit`/`@periodic`/`@on`.
+- ✅ `agent/home_agent.py` + `agent/policies.py` — discovers the house, subscribes to `event(*)`,
+  drives devices with real `invoke()`. Deterministic policy code, zero LLM tokens.
+- ✅ `runner/demo.py` (launch all 12 processes, `--speed`/`--tail`) + `runner/tail.py` (live bus log).
+- ✅ 17 tests pass (`pytest`): per-driver, policy, and a hermetic full-day orchestration test.
+- ✅ Full 1×/3×/6× live runs succeed; captured transcript in `sunhaus/docs/sample-run-1x.txt`.
+- ✅ `sunhaus/pyproject.toml` (installable; `sunhaus-demo` / `sunhaus-tail` scripts), README, architecture doc.
 
-- Imports: `from device_connect_edge import DeviceRuntime`;
-  `from device_connect_edge.drivers import DeviceDriver, rpc, emit, periodic, on`;
-  `from device_connect_edge.types import DeviceIdentity, DeviceStatus`.
-- All decorated methods **must be `async def`**; decorators are called: `@rpc()`, `@emit()`, `@periodic(interval=5.0)`,
-  `@on(device_id=..., event_name=...)` (handler signature: `self, device_id, event_name, payload`).
-- Emit by calling the method: `await self.pv_forecast(total_kwh=...)` — body usually `pass`. Event names: `[A-Za-z0-9_-]+` only.
-- Driver → world: `await self.invoke_remote(device_id, fn, **params)` (check `"error" in result`), `await self.list_devices()`.
-- Entrypoint: `DeviceRuntime(driver=..., device_id=..., allow_insecure=True)` with **no messaging_urls → Zenoh D2D**.
-  Windows: `loop.add_signal_handler` raises `NotImplementedError` — wrap in try/except, poll a stop Event.
-  Set `PYTHONUTF8=1` for the emoji in upstream log messages.
-- Agent tools (all sync): `from device_connect_agent_tools import connect, discover, invoke, subscribe`;
-  `connect()` no args in D2D; selector grammar `device(type:...)`, `invoke("device(id).function(name)", params)`;
-  `subscribe("event(*)")` → `Subscription.read()/.iter()`. (`discover_devices`/`invoke_device` are deprecated aliases.)
-- `devctl tail` **does not exist** — never reference it; the log tail is our own `runner/tail.py` on `subscribe("event(*)")`.
-- Multicast may be firewalled on Windows → fallback: `docker run -p7447:7447 eclipse/zenoh` +
-  `ZENOH_CONNECT=tcp/localhost:7447` + `DEVICE_CONNECT_DISCOVERY_MODE=d2d` on every process.
-- Testing without a bus: instantiate driver, `await driver.some_rpc(...)` directly; capture events via
-  `driver.set_event_callback(async_cb)`. pytest: `asyncio_mode = auto` + `pytest-asyncio>=0.23`.
+### Run it
 
-## Next steps
+```bash
+cd sunhaus
+# with the venv active (E:\repos\device-connect\.venv on this box):
+python -m runner.demo               # 3-minute day (1x)
+python -m runner.demo --speed 6x    # 30-second smoke run
+python -m runner.demo --tail        # also stream the live event log
+python -m pytest                    # 17 tests, no bus needed
+```
 
-1. Write the 11 drivers in `sunhaus/sunhaus/devices/` + `sunhaus/sunhaus/runtime.py` (common Windows-safe entrypoint)
-   per CONCEPT §4/§9. Simulator coupling only via `@on` (climate←hvac, ev←wallbox, meter←everything).
-2. `agent/home_agent.py` + `agent/policies.py` (sync loop: poll `Subscription.read()` ~1 Hz; solar-first windows,
-   washer ready-by, EV pre-plan on `heading_home`, peak cap, battery dispatch; daily stats at 21:55).
-3. `runner/demo.py` (spawn processes with shared `SUNHAUS_SIM_EPOCH`/`SUNHAUS_SIM_SPEED` env + insecure flag,
-   chaos keys via msvcrt) and `runner/tail.py`; `tests/` per CONCEPT; `pyproject.toml` (deps: device-connect-edge,
-   device-connect-agent-tools; installable from PyPI, else `pip install -e` the two packages in the fork clone).
-4. Verify: pytest, then two-process smoke test (inverter + agent discover), then full day at 6×.
-5. M4: websocket bridge feeding the storyboard from live bus events; then promote a cleaned `sunhaus/` into the fork
-   as `examples/sunhaus` on branch `example/sunhaus` → PR `quarterbit/device-connect` → `arm/device-connect`
-   (merge `upstream/main` first).
+## Hard-won API facts (verified against the v0.2.5 source + live runs)
+
+- Event message on the wire is a JSON-RPC envelope: **`{"method": <event_name>, "params": <payload>, "_subject": ...}`**.
+  Zenoh subjects use **`/`** separators: `device-connect/default/<device_id>/event/<event_name>`.
+- **`subscribe("event(*)")` snapshots the event *names* known at subscribe time**, then listens
+  `*/event/<name>` fleet-wide. → **discover the whole house BEFORE subscribing**, or you only hear
+  events whose names were already known (this bit us; it's why the agent discovers, then subscribes).
+- **Best-effort D2D drops one-shot events** under many local peers. Fix used: request/advertisement
+  events **repeat while pending** (washer/heatpump/ev/weather), and the plug-in→charge transition is
+  confirmed over **RPC** (`get_session`) not a single `plug_connected` event. Telemetry (repeated) is reliable.
+- All decorated methods are `async def`; decorators are called (`@rpc()`); emit by calling the method;
+  event names must match `[A-Za-z0-9_-]+`. Windows: wrap `loop.add_signal_handler` in try/except.
+  `PYTHONUTF8=1` needed for upstream emoji logs. `devctl tail` does NOT exist — the tail is our own.
+- Bash-tool cwd resets between calls — always `cd sunhaus` (or use absolute venv python path).
+
+## Next steps (PR back to Arm)
+
+1. Optional polish: M4 — feed the storyboard from live bus events over a websocket bridge
+   (`runner/` + a tiny WS server publishing `subscribe("event(*)")`), so the animation is live not scripted.
+   Also consider a Strands/MCP agent adapter under `agent/adapters/` to show framework-agnosticism.
+2. Promote to the fork as `examples/sunhaus` on a feature branch, `git merge upstream/main` first, push,
+   open PR `quarterbit/device-connect` → `arm/device-connect`. Keep AI-transcript-shaped files out of the PR
+   (the sample-run txt is fine — it's real program output, not chat).
+3. Before the PR, sanity-check the demo on Linux/macOS (multicast is friendlier there than Windows;
+   the local-Zenoh-router fallback is documented in the README if a firewall blocks multicast).
