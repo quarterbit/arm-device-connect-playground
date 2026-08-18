@@ -132,10 +132,10 @@ Three synchronized panes, all driven by the same bus traffic:
 
 Device Connect itself: **no**. Discovery, RPC and events are plain Zenoh messages — zero tokens, regardless of how many devices chat all day.
 
-Tokens enter only if `agent-home`'s *planning* runs on an LLM. The interesting question is *how you'd actually wire that in a real product* — because the architecture changes the bill by two orders of magnitude:
+Tokens enter only if `agent-home`'s *planning* runs on an LLM, and a production integration keeps that remarkably cheap:
 
-1. **The LLM writes the policy; the policy runs the house.** The ~15 decisions on a SUNHAUS day are arithmetic against known preferences — deadlines, tariffs, forecasts — which is exactly what `agent/policies.py` encodes. The right place for a big model is one level up: it *authors and re-tunes* those rules (when a new device joins, the tariff changes, or at a weekly review) and the rules then execute all day at $0.00. The LLM is a compiler, not the control loop.
-2. **When the LLM is consulted, it's one cached call, not an agentic loop.** The stable prefix — system prompt, tool schemas, the discovered device roster — is byte-identical every time, so it prompt-caches (cache reads are ~10× cheaper). The fresh tokens are just the triggering event plus current state (~a few hundred), and the reply is one structured decision (~250 tokens). No 3–5 round-trip tool loop.
+1. **The LLM writes the policy; the policy runs the house.** The ~15 decisions on a SUNHAUS day are arithmetic against known preferences — deadlines, tariffs, forecasts — which is exactly what `agent/policies.py` encodes. The natural place for a big model is one level up: it *authors and re-tunes* those rules (when a new device joins, the tariff changes, or at a weekly review) and the rules then execute all day at $0.00. The LLM is a compiler, not the control loop.
+2. **When the LLM is consulted, it's one cached call.** The stable prefix — system prompt, tool schemas, the discovered device roster — is byte-identical every time, so it prompt-caches (cache reads are ~10× cheaper). The fresh tokens are just the triggering event plus current state (~a few hundred), and the reply is one structured decision (~250 tokens).
 3. **A small model is enough.** "Fit 3 kWh of DHW inside 11:30–13:00" is not frontier reasoning — a Haiku-class model handles it, and the Batch API halves anything that isn't latency-critical (daily summary, weekly re-tune).
 4. **Or no cloud at all.** Run a small model on the home gateway itself — this is Arm hardware, after all. Zero cloud tokens; you pay in local silicon and milliwatts.
 
@@ -143,10 +143,10 @@ Tokens enter only if `agent-home`'s *planning* runs on an LLM. The interesting q
 |---|---|---|
 | **Policy mode (this demo)** — LLM only re-tunes the rules ~weekly | ~12k / 1k amortized | **$0.00 runtime · ~1–2¢ amortized** |
 | \+ chat front-end ("60 % by 7 am, cheapest way" — a handful of asks) | ~40k / 2k, mostly cached | ~2–5¢ |
-| LLM decides *every* beat, built right (1 cached Haiku call × ~15 decisions) | ~62k / 4k | **~8¢** (Sonnet-class: ~25¢) |
-| Naive agentic loop (3–5 uncached Sonnet calls per decision) — the anti-pattern | ~420k / 24k | ~$1.60–3.00 |
+| LLM decides *every* beat (1 cached Haiku-class call × ~15 decisions) | ~62k / 4k | **~8¢** (Sonnet-class: ~25¢) |
+| Small model on the Arm gateway | 0 cloud tokens | $0 cloud |
 
-So a *fully* LLM-driven house is realistically **$1–3 per month**, and the sensible hybrid is **effectively $0** — the dollars-per-day figure only appears if you rebuild context from scratch and loop the model on every decision, which is precisely the design this demo avoids. The distinction matters at fleet scale: for a vendor operating 100 000 homes, that's ~$300k/day (naive) vs. ~$8k/day (LLM-in-the-loop, built right) vs. ~$0 (policy mode with occasional LLM tuning). The storyboard's top-right meter shows the same day all three ways as the decisions fire.
+So even a *fully* LLM-driven house runs on the order of **$1–3 per month**, and the sensible hybrid is **effectively $0** — cost is not the reason to prefer policy code; determinism and latency are. The same math scales calmly to fleets (100 000 homes ≈ $8k/day fully LLM-driven, ≈ $0 in policy mode), which is why the LLM belongs one level up, tuning policies. The storyboard's top-right meter ticks the built-right cost live as the day's decisions fire.
 
 ## 9. Repo structure
 

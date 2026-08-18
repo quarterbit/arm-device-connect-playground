@@ -22,7 +22,6 @@
   .meter{margin-left:auto; border:1px solid var(--line2); border-radius:8px; padding:7px 12px; background:#0F1626; font-family:'IBM Plex Mono',monospace; font-size:11px; line-height:1.55; text-align:right; min-width:250px}
   .meter .m-title{color:var(--muted); font-size:10px; letter-spacing:.4px}
   .meter .m-lbl{color:var(--faint)}
-  .meter .m-naive{color:var(--heat); font-weight:600}
   .meter .m-real{color:var(--solar); font-weight:600}
   .meter .m-zero{color:var(--batt); font-weight:600}
   .legend{display:flex; gap:16px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:10px}
@@ -65,10 +64,9 @@
       <h1>SUNHAUS <span style="color:var(--faint)">·</span> a <span class="dc">Device&nbsp;Connect</span> smart-home demo</h1>
       <div class="sub">arm/device-connect · zenoh D2D · every appliance is a DeviceDriver, every decision is an agent</div>
     </div>
-    <div class="meter" title="Device Connect itself uses zero LLM tokens — discovery, RPC and events are plain Zenoh messages. If agent-home's planning DID run on an LLM, architecture decides the bill: 'naive loop' wakes a fresh, uncached multi-call agentic loop per decision (the anti-pattern); 'built right' is one structured call per decision with the stable prefix (system prompt, tool schemas, device roster) cached and a small Haiku-class model — pennies per day. Real products go one step further: the LLM writes and re-tunes the policy occasionally, and the policy runs the house — this demo's default, $0.00 (or run a small model on the Arm gateway itself: no cloud tokens at all).">
-      <div class="m-title">agent-home · the same day, three ways</div>
-      <div><span class="m-lbl">naive agentic loop</span> <span class="m-naive" id="m-naive">$0.00</span> <span class="m-lbl" id="m-tok">· 0/0 tok, uncached Sonnet</span></div>
-      <div><span class="m-lbl">built right</span> <span class="m-real" id="m-real">$0.00</span> <span class="m-lbl">· 1 cached Haiku call/decision</span></div>
+    <div class="meter" title="Device Connect itself uses zero LLM tokens — discovery, RPC and events are plain Zenoh messages. If agent-home's planning ran on an LLM, each decision is one structured call: the stable prefix (system prompt, tool schemas, device roster) is prompt-cached, only the triggering event is fresh, and a small Haiku-class model is plenty — pennies for the whole day. Real products go one step further: the LLM writes and re-tunes the policy occasionally, and the policy runs the house — this demo's default, $0.00. Or run a small model on the Arm gateway itself: no cloud tokens at all.">
+      <div class="m-title">agent-home · LLM cost meter</div>
+      <div><span class="m-lbl">if LLM-driven</span> <span class="m-real" id="m-real">$0.00</span> <span class="m-lbl" id="m-dec">· 0 decisions, 1 cached Haiku call each</span></div>
       <div><span class="m-lbl">policy mode — this demo</span> <span class="m-zero">$0.00</span></div>
     </div>
   </header>
@@ -334,7 +332,7 @@ const simClock = t => { const h = 6 + t*16/180; const hh=Math.floor(h), mm=Math.
 // each: t(s), dev, css color key, log text, packet {from,to,label,color}, apply() side effects
 // event names follow the real device-connect constraint: [A-Za-z0-9_-] only
 const EVENTS = [
- {t:0.5, tok:{i:22000,o:1200}, dev:'agent-home', c:'msg', log:'zenoh scouting… 11 peers discovered (D2D presence, no broker)', pk:{from:'agent',to:'ev2',label:'discover',color:'msg'},
+ {t:0.5, dec:1, dev:'agent-home', c:'msg', log:'zenoh scouting… 11 peers discovered (D2D presence, no broker)', pk:{from:'agent',to:'ev2',label:'discover',color:'msg'},
   fx:()=>{setText('st-agent','orchestrating'); setText('st-grid','import 0.2 kW');}},
  {t:3,   dev:'weather-01', c:'msg', log:'@emit wx_forecast — sunny, max 31°C · PV estimate 28.4 kWh', pk:{from:'weather',to:'agent',label:'wx_forecast',color:'msg'},
   fx:()=>setText('st-weather','sunny 31°C')},
@@ -347,19 +345,19 @@ const EVENTS = [
   fx:()=>setText('st-wb','idle')},
  {t:22.5,dev:'washer-01', c:'msg', log:'@emit job_queued {program: eco40, ready_by: 17:30, est: 1.1 kWh} — drum loaded, owner off to work', pk:{from:'washer',to:'agent',label:'job_queued',color:'msg'},
   fx:()=>setText('st-washer','loaded · by 17:30')},
- {t:24, tok:{i:34000,o:2100},  dev:'agent-home', c:'msg', log:'plan: washer → 11:45 (solar peak window, done 13:45, 3¾ h margin)', pk:{from:'agent',to:'washer',label:'scheduled 11:45',color:'msg'},
+ {t:24, dec:1,  dev:'agent-home', c:'msg', log:'plan: washer → 11:45 (solar peak window, done 13:45, 3¾ h margin)', pk:{from:'agent',to:'washer',label:'scheduled 11:45',color:'msg'},
   fx:()=>setText('st-washer','queued 11:45')},
  {t:28,  dev:'heatpump-01', c:'heat', log:'@emit window_request {load: 3 kWh DHW} — asks for cheap energy', pk:{from:'heatpump',to:'agent',label:'window_request',color:'heat'},
   fx:()=>setText('st-hp','wants 3 kWh')},
- {t:29.5, tok:{i:31000,o:1800},dev:'agent-home', c:'heat', log:'invoke("heatpump-01.grant_window") → 11:30–13:00 (solar peak)', pk:{from:'agent',to:'heatpump',label:'grant_window',color:'heat'},
+ {t:29.5, dec:1,dev:'agent-home', c:'heat', log:'invoke("heatpump-01.grant_window") → 11:30–13:00 (solar peak)', pk:{from:'agent',to:'heatpump',label:'grant_window',color:'heat'},
   fx:()=>setText('st-hp','scheduled 11:30')},
- {t:45, tok:{i:18000,o:900},  dev:'inverter-01', c:'batt', log:'PV 4.6 kW · surplus → battery charging 2.0 kW · SoC 48%', pk:{from:'battery',to:'agent',label:'soc 48%',color:'batt'},
+ {t:45, dec:1,  dev:'inverter-01', c:'batt', log:'PV 4.6 kW · surplus → battery charging 2.0 kW · SoC 48%', pk:{from:'battery',to:'agent',label:'soc 48%',color:'batt'},
   fx:()=>{flow('f-batt',true); setText('st-pv','4.6 kW'); setText('st-batt','SoC 48% ▲'); soc(48);}},
- {t:62, tok:{i:26000,o:1400},  dev:'agent-home', c:'heat', log:'invoke("heatpump-01.start_dhw") — heating water on sunshine', pk:{from:'agent',to:'heatpump',label:'start_dhw',color:'heat'},
+ {t:62, dec:1,  dev:'agent-home', c:'heat', log:'invoke("heatpump-01.start_dhw") — heating water on sunshine', pk:{from:'agent',to:'heatpump',label:'start_dhw',color:'heat'},
   fx:()=>{flow('f-heat',true); setText('st-hp','DHW 2.4 kW');}},
- {t:64.7, tok:{i:24000,o:1300},dev:'agent-home', c:'msg', log:'invoke("washer-01.start_cycle") — laundry runs on PV surplus', pk:{from:'agent',to:'washer',label:'start_cycle',color:'msg'},
+ {t:64.7, dec:1,dev:'agent-home', c:'msg', log:'invoke("washer-01.start_cycle") — laundry runs on PV surplus', pk:{from:'agent',to:'washer',label:'start_cycle',color:'msg'},
   fx:()=>{flow('f-wash',true); setText('st-washer','washing 0.9 kW'); $('washer-drum').classList.add('spin');}},
- {t:73, tok:{i:29000,o:1700},  dev:'inverter-01', c:'solar', log:'solar peak 8.1 kW · SoC 71% · agent pre-cools house for the hot afternoon', pk:{from:'agent',to:'hvac',label:'set 22.5°C',color:'cool'},
+ {t:73, dec:1,  dev:'inverter-01', c:'solar', log:'solar peak 8.1 kW · SoC 71% · agent pre-cools house for the hot afternoon', pk:{from:'agent',to:'hvac',label:'set 22.5°C',color:'cool'},
   fx:()=>{setText('st-pv','8.1 kW'); setText('st-batt','SoC 71% ▲'); soc(71); setText('st-hvac','pre-cool 22.5°C'); $('hvac-air').setAttribute('opacity','0.9'); setText('st-climate','23.9°C ↓');}},
  {t:87,  dev:'washer-01', c:'msg', log:'@emit cycle_complete — laundry ready 3¾ h before anyone is home', pk:{from:'washer',to:'agent',label:'cycle_complete',color:'msg'},
   fx:()=>{flow('f-wash',false); setText('st-washer','done ✓'); $('washer-drum').classList.remove('spin');}},
@@ -367,43 +365,39 @@ const EVENTS = [
   fx:()=>{$('clouds').setAttribute('opacity','0.9'); setText('st-weather','front inbound');}},
  {t:91.5,dev:'inverter-01', c:'solar', log:'@emit pv_forecast rev 2 — today 24.3 kWh (−18%)', pk:{from:'inverter',to:'agent',label:'pv_forecast r2',color:'solar'},
   fx:()=>setText('st-pv','3.1 kW')},
- {t:93, tok:{i:38000,o:2400},  dev:'agent-home', c:'cool', log:'plan revised → hvac eco mode, heat pump paused, battery holds charge', pk:{from:'agent',to:'hvac',label:'eco',color:'cool'},
+ {t:93, dec:1,  dev:'agent-home', c:'cool', log:'plan revised → hvac eco mode, heat pump paused, battery holds charge', pk:{from:'agent',to:'hvac',label:'eco',color:'cool'},
   fx:()=>{setText('st-hvac','eco'); setText('st-hp','paused'); flow('f-heat',false); setText('st-climate','23.2°C');}},
- {t:107, tok:{i:17000,o:800}, dev:'weather-01', c:'msg', log:'@emit wx_update — front passed · PV back to 5.2 kW · SoC 88%', pk:{from:'weather',to:'agent',label:'wx_update',color:'msg'},
+ {t:107, dec:1, dev:'weather-01', c:'msg', log:'@emit wx_update — front passed · PV back to 5.2 kW · SoC 88%', pk:{from:'weather',to:'agent',label:'wx_update',color:'msg'},
   fx:()=>{$('clouds').setAttribute('opacity','0'); setText('st-pv','5.2 kW'); setText('st-batt','SoC 88%'); soc(88); setText('st-weather','clearing');}},
- {t:121, tok:{i:12000,o:500}, dev:'ev-blue', c:'msg', log:'@emit heading_home {eta: 17:30, want: 60% by 07:00 ≈ 27 kWh} — car announces itself from the road', pk:{from:'ev1',to:'agent',label:'heading_home 17:30',color:'msg'}},
- {t:122.5, tok:{i:41000,o:2600},dev:'agent-home', c:'solar', log:'pre-plan before arrival: PV surplus on plug-in, remainder off-peak from 01:00 · wallbox reserved', pk:{from:'agent',to:'wallbox',label:'reserve',color:'solar'},
+ {t:121, dec:1, dev:'ev-blue', c:'msg', log:'@emit heading_home {eta: 17:30, want: 60% by 07:00 ≈ 27 kWh} — car announces itself from the road', pk:{from:'ev1',to:'agent',label:'heading_home 17:30',color:'msg'}},
+ {t:122.5, dec:1,dev:'agent-home', c:'solar', log:'pre-plan before arrival: PV surplus on plug-in, remainder off-peak from 01:00 · wallbox reserved', pk:{from:'agent',to:'wallbox',label:'reserve',color:'solar'},
   fx:()=>setText('st-wb','reserved')},
  {t:129, dev:'ev-blue', c:'msg', log:'@emit arrived — SoC 24%', pk:{from:'ev1',to:'agent',label:'arrived',color:'msg'},
   fx:()=>{$('g-ev1').setAttribute('opacity','1'); setText('st-ev1','SoC 24%');}},
  {t:131, dev:'wallbox-01', c:'solar', log:'@emit plug_connected — handshake matches the pre-plan, zero wait', pk:{from:'wallbox',to:'agent',label:'plug_connected',color:'solar'},
   fx:()=>{$('wb-cable').setAttribute('opacity','1'); $('ev1-port').setAttribute('opacity','1');}},
- {t:133, tok:{i:36000,o:2200}, dev:'agent-home', c:'solar', log:'charge plan live: 3 kW from PV surplus now, remainder off-peak from 01:00', pk:{from:'agent',to:'wallbox',label:'charge_plan',color:'solar'},
+ {t:133, dec:1, dev:'agent-home', c:'solar', log:'charge plan live: 3 kW from PV surplus now, remainder off-peak from 01:00', pk:{from:'agent',to:'wallbox',label:'charge_plan',color:'solar'},
   fx:()=>{flow('f-wb',true); setText('st-wb','PV 3 kW'); setText('st-ev1','SoC 24% ▲');}},
  {t:143, dev:'inverter-01', c:'batt', log:'sunset · PV 0.3 kW → battery discharging 1.8 kW for the dinner peak', pk:{from:'battery',to:'agent',label:'discharge',color:'batt'},
   fx:()=>{flow('f-pv',false); flow('f-batt',false); flow('f-wb',false); flow('f-house',true); setText('st-pv','0.0 kW'); setText('st-batt','SoC 84% ▼'); soc(84); setText('st-wb','paused'); $('hvac-air').setAttribute('opacity','0');}},
- {t:157, tok:{i:28000,o:1600}, dev:'ev-red', c:'grid', log:'rpc request_charge {top-up 15%} → agent staggers start to 22:30 (grid-peak cap)', pk:{from:'ev2',to:'agent',label:'request_charge',color:'grid'},
+ {t:157, dec:1, dev:'ev-red', c:'grid', log:'rpc request_charge {top-up 15%} → agent staggers start to 22:30 (grid-peak cap)', pk:{from:'ev2',to:'agent',label:'request_charge',color:'grid'},
   fx:()=>{setText('st-ev2','SoC 63% · queued'); setText('st-grid','capped');}},
- {t:169, tok:{i:21000,o:1100}, dev:'heatpump-01', c:'heat', log:'night setback 19°C · house load 0.4 kW', pk:{from:'agent',to:'heatpump',label:'setback',color:'heat'},
+ {t:169, dec:1, dev:'heatpump-01', c:'heat', log:'night setback 19°C · house load 0.4 kW', pk:{from:'agent',to:'heatpump',label:'setback',color:'heat'},
   fx:()=>{setText('st-hp','setback 19°C'); setText('st-hvac','off'); setText('st-climate','22.6°C');}},
- {t:178, tok:{i:44000,o:2800}, dev:'agent-home', c:'msg', log:'daily stats — PV 24.1 kWh · self-consumption 78% · grid import 6.2 kWh · laundry done 13:45 · ev-blue plan on track', pk:{from:'agent',to:'meter',label:'stats',color:'msg'},
+ {t:178, dec:1, dev:'agent-home', c:'msg', log:'daily stats — PV 24.1 kWh · self-consumption 78% · grid import 6.2 kWh · laundry done 13:45 · ev-blue plan on track', pk:{from:'agent',to:'meter',label:'stats',color:'msg'},
   fx:()=>{setText('st-batt','SoC 54%'); soc(54); flow('f-house',false); setText('st-agent','day complete');}}
 ];
 
-// ---- LLM cost meter: the same day, three architectures ----
-// naive: 3-5 uncached Sonnet-class calls per decision ($3/$15 per Mtok) — the
-//        per-event tok{i,o} values are that trace.
-// built right: 1 structured call per decision; ~3.5k stable prefix + ~600
-//        fresh in + ~250 out on a Haiku-class model ($1/$5) ≈ $0.0053/decision.
-// policy mode (this demo): deterministic rules, $0.00.
-let llmIn=0, llmOut=0, llmDecisions=0;
-const REAL_PER_DECISION = (3500+600)*1e-6*1 + 250*1e-6*5; // ≈ $0.0053
-function spend(tok){ if(!tok) return; llmIn+=tok.i; llmOut+=tok.o; llmDecisions++; drawMeter(); }
+// ---- LLM cost meter (hypothetical: if agent-home planned on an LLM) ----
+// One structured call per decision: ~3.5k stable prefix (prompt-cached) +
+// ~600 fresh in + ~250 out on a Haiku-class model ($1/$5 per Mtok)
+// ≈ $0.0053/decision. This demo's default is policy code: $0.00.
+let llmDecisions=0;
+const COST_PER_DECISION = (3500+600)*1e-6*1 + 250*1e-6*5; // ≈ $0.0053
+function spend(dec){ if(!dec) return; llmDecisions++; drawMeter(); }
 function drawMeter(){
-  const k=n=>n>=1000?`${Math.round(n/1000)}k`:`${n}`;
-  setText('m-tok', `· ${k(llmIn)}/${k(llmOut)} tok, uncached Sonnet`);
-  setText('m-naive', `$${(llmIn*3e-6 + llmOut*15e-6).toFixed(2)}`);
-  setText('m-real', `$${(llmDecisions*REAL_PER_DECISION).toFixed(2)}`);
+  setText('m-dec', `· ${llmDecisions} decision${llmDecisions===1?'':'s'}, 1 cached Haiku call each`);
+  setText('m-real', `$${(llmDecisions*COST_PER_DECISION).toFixed(2)}`);
 }
 
 function soc(pct){
@@ -484,11 +478,11 @@ function resetWorld(){
   setText('st-hp','standby'); setText('st-hvac','off'); setText('st-wb','idle');
   setText('st-ev1','SoC 41%'); setText('st-ev2','SoC 63%'); setText('st-weather','—'); setText('st-grid','idle');
   setText('st-washer','idle'); setText('st-climate','21.4°C');
-  llmIn=0; llmOut=0; llmDecisions=0; drawMeter();
+  llmDecisions=0; drawMeter();
 }
 function applyUpTo(t){ // used on scrub: replay silently
   resetWorld();
-  EVENTS.forEach(ev=>{ if(ev.t<=t){ fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log); spend(ev.tok);} });
+  EVENTS.forEach(ev=>{ if(ev.t<=t){ fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log); spend(ev.dec);} });
 }
 function step(now){
   if(last==null) last=now;
@@ -500,7 +494,7 @@ function step(now){
   }
   EVENTS.forEach(ev=>{
     if(playing && ev.t<=T && !fired.has(ev.t)){
-      fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log); spawnPacket(ev.pk); spend(ev.tok);
+      fired.add(ev.t); ev.fx&&ev.fx(); logLine(ev.t,ev.dev,ev.c,ev.log); spawnPacket(ev.pk); spend(ev.dec);
     }
   });
   sky(T);
