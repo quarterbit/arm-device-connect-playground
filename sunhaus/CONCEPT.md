@@ -132,14 +132,21 @@ Three synchronized panes, all driven by the same bus traffic:
 
 Device Connect itself: **no**. Discovery, RPC and events are plain Zenoh messages — zero tokens, regardless of how many devices chat all day.
 
-Tokens enter only if `agent-home`'s *planning* runs on an LLM (the MCP/Strands adapter mode). Estimate for a typical day like the demo day, with a well-built agent (LLM woken only for the ~15 real decisions; routine telemetry handled by policy code; each decision ≈ 3–5 model calls with tool use):
+Tokens enter only if `agent-home`'s *planning* runs on an LLM. The interesting question is *how you'd actually wire that in a real product* — because the architecture changes the bill by two orders of magnitude:
 
-| | tokens/day (in / out) | Sonnet-class ($3/$15 per Mtok) | with prompt caching | Haiku-class ($1/$5) |
-|---|---|---|---|---|
-| Decision-only agent (~15 episodes) | ~420k / ~24k | **≈ $1.60/day** | ≈ $0.55–0.70 | ≈ $0.54 |
-| Naive agent (LLM sees every telemetry digest) | ~800k / ~40k | ≈ $3.00/day | ≈ $1.10 | ≈ $1.00 |
+1. **The LLM writes the policy; the policy runs the house.** The ~15 decisions on a SUNHAUS day are arithmetic against known preferences — deadlines, tariffs, forecasts — which is exactly what `agent/policies.py` encodes. The right place for a big model is one level up: it *authors and re-tunes* those rules (when a new device joins, the tariff changes, or at a weekly review) and the rules then execute all day at $0.00. The LLM is a compiler, not the control loop.
+2. **When the LLM is consulted, it's one cached call, not an agentic loop.** The stable prefix — system prompt, tool schemas, the discovered device roster — is byte-identical every time, so it prompt-caches (cache reads are ~10× cheaper). The fresh tokens are just the triggering event plus current state (~a few hundred), and the reply is one structured decision (~250 tokens). No 3–5 round-trip tool loop.
+3. **A small model is enough.** "Fit 3 kWh of DHW inside 11:30–13:00" is not frontier reasoning — a Haiku-class model handles it, and the Batch API halves anything that isn't latency-critical (daily summary, weekly re-tune).
+4. **Or no cloud at all.** Run a small model on the home gateway itself — this is Arm hardware, after all. Zero cloud tokens; you pay in local silicon and milliwatts.
 
-So roughly **$0.5–3 per day (~$20–90/month)** if fully LLM-driven — which is exactly why the default SUNHAUS agent is deterministic policy code at $0.00, with the LLM as an optional conversational front-end. The storyboard's top-right consumption meter ticks these numbers up live as the day's decisions fire.
+| Architecture (per home, per day) | Tokens/day (in / out) | Cost/day |
+|---|---|---|
+| **Policy mode (this demo)** — LLM only re-tunes the rules ~weekly | ~12k / 1k amortized | **$0.00 runtime · ~1–2¢ amortized** |
+| \+ chat front-end ("60 % by 7 am, cheapest way" — a handful of asks) | ~40k / 2k, mostly cached | ~2–5¢ |
+| LLM decides *every* beat, built right (1 cached Haiku call × ~15 decisions) | ~62k / 4k | **~8¢** (Sonnet-class: ~25¢) |
+| Naive agentic loop (3–5 uncached Sonnet calls per decision) — the anti-pattern | ~420k / 24k | ~$1.60–3.00 |
+
+So a *fully* LLM-driven house is realistically **$1–3 per month**, and the sensible hybrid is **effectively $0** — the dollars-per-day figure only appears if you rebuild context from scratch and loop the model on every decision, which is precisely the design this demo avoids. The distinction matters at fleet scale: for a vendor operating 100 000 homes, that's ~$300k/day (naive) vs. ~$8k/day (LLM-in-the-loop, built right) vs. ~$0 (policy mode with occasional LLM tuning). The storyboard's top-right meter shows the same day all three ways as the decisions fire.
 
 ## 9. Repo structure
 

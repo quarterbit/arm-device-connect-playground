@@ -21,9 +21,10 @@
   .sub{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-top:4px}
   .meter{margin-left:auto; border:1px solid var(--line2); border-radius:8px; padding:7px 12px; background:#0F1626; font-family:'IBM Plex Mono',monospace; font-size:11px; line-height:1.55; text-align:right; min-width:250px}
   .meter .m-title{color:var(--muted); font-size:10px; letter-spacing:.4px}
-  .meter .m-tok{color:var(--ink); font-weight:600}
-  .meter .m-cost{color:var(--solar); font-weight:600}
-  .meter .m-zero{color:var(--batt)}
+  .meter .m-lbl{color:var(--faint)}
+  .meter .m-naive{color:var(--heat); font-weight:600}
+  .meter .m-real{color:var(--solar); font-weight:600}
+  .meter .m-zero{color:var(--batt); font-weight:600}
   .legend{display:flex; gap:16px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); margin-bottom:10px}
   .legend span{display:inline-flex; align-items:center; gap:6px}
   .dot{width:10px; height:10px; border-radius:2px; display:inline-block}
@@ -64,10 +65,11 @@
       <h1>SUNHAUS <span style="color:var(--faint)">·</span> a <span class="dc">Device&nbsp;Connect</span> smart-home demo</h1>
       <div class="sub">arm/device-connect · zenoh D2D · every appliance is a DeviceDriver, every decision is an agent</div>
     </div>
-    <div class="meter" title="Device Connect itself uses zero LLM tokens — discovery, RPC and events are plain Zenoh messages. This meter shows what agent-home WOULD consume if its planning ran on a public LLM via the MCP/agent-tools adapter (~4 model calls per decision, incl. tool-use round trips). The default SUNHAUS agent is deterministic policy code: $0.00.">
-      <div class="m-title">agent-home · if LLM-driven (MCP adapter)</div>
-      <div><span class="m-tok" id="m-tok">0 in / 0 out</span> tokens</div>
-      <div><span class="m-cost" id="m-cost">$0.00</span> <span style="color:var(--faint)">Sonnet ($3/$15 per Mtok)</span> · <span class="m-zero">policy mode $0.00</span></div>
+    <div class="meter" title="Device Connect itself uses zero LLM tokens — discovery, RPC and events are plain Zenoh messages. If agent-home's planning DID run on an LLM, architecture decides the bill: 'naive loop' wakes a fresh, uncached multi-call agentic loop per decision (the anti-pattern); 'built right' is one structured call per decision with the stable prefix (system prompt, tool schemas, device roster) cached and a small Haiku-class model — pennies per day. Real products go one step further: the LLM writes and re-tunes the policy occasionally, and the policy runs the house — this demo's default, $0.00 (or run a small model on the Arm gateway itself: no cloud tokens at all).">
+      <div class="m-title">agent-home · the same day, three ways</div>
+      <div><span class="m-lbl">naive agentic loop</span> <span class="m-naive" id="m-naive">$0.00</span> <span class="m-lbl" id="m-tok">· 0/0 tok, uncached Sonnet</span></div>
+      <div><span class="m-lbl">built right</span> <span class="m-real" id="m-real">$0.00</span> <span class="m-lbl">· 1 cached Haiku call/decision</span></div>
+      <div><span class="m-lbl">policy mode — this demo</span> <span class="m-zero">$0.00</span></div>
     </div>
   </header>
 
@@ -388,14 +390,20 @@ const EVENTS = [
   fx:()=>{setText('st-batt','SoC 54%'); soc(54); flow('f-house',false); setText('st-agent','day complete');}}
 ];
 
-// ---- LLM consumption meter (hypothetical: agent-home via MCP adapter) ----
-// Sonnet-class public-LLM pricing: $3 / $15 per million tokens in / out.
-let llmIn=0, llmOut=0;
-function spend(tok){ if(!tok) return; llmIn+=tok.i; llmOut+=tok.o; drawMeter(); }
+// ---- LLM cost meter: the same day, three architectures ----
+// naive: 3-5 uncached Sonnet-class calls per decision ($3/$15 per Mtok) — the
+//        per-event tok{i,o} values are that trace.
+// built right: 1 structured call per decision; ~3.5k stable prefix + ~600
+//        fresh in + ~250 out on a Haiku-class model ($1/$5) ≈ $0.0053/decision.
+// policy mode (this demo): deterministic rules, $0.00.
+let llmIn=0, llmOut=0, llmDecisions=0;
+const REAL_PER_DECISION = (3500+600)*1e-6*1 + 250*1e-6*5; // ≈ $0.0053
+function spend(tok){ if(!tok) return; llmIn+=tok.i; llmOut+=tok.o; llmDecisions++; drawMeter(); }
 function drawMeter(){
   const k=n=>n>=1000?`${Math.round(n/1000)}k`:`${n}`;
-  setText('m-tok', `${k(llmIn)} in / ${k(llmOut)} out`);
-  setText('m-cost', `$${(llmIn*3e-6 + llmOut*15e-6).toFixed(2)}`);
+  setText('m-tok', `· ${k(llmIn)}/${k(llmOut)} tok, uncached Sonnet`);
+  setText('m-naive', `$${(llmIn*3e-6 + llmOut*15e-6).toFixed(2)}`);
+  setText('m-real', `$${(llmDecisions*REAL_PER_DECISION).toFixed(2)}`);
 }
 
 function soc(pct){
@@ -476,7 +484,7 @@ function resetWorld(){
   setText('st-hp','standby'); setText('st-hvac','off'); setText('st-wb','idle');
   setText('st-ev1','SoC 41%'); setText('st-ev2','SoC 63%'); setText('st-weather','—'); setText('st-grid','idle');
   setText('st-washer','idle'); setText('st-climate','21.4°C');
-  llmIn=0; llmOut=0; drawMeter();
+  llmIn=0; llmOut=0; llmDecisions=0; drawMeter();
 }
 function applyUpTo(t){ // used on scrub: replay silently
   resetWorld();
