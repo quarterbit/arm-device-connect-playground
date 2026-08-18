@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sunhaus"
+version = "0.1.0"
+description = "A Device Connect smart-home energy demo: one house, eleven devices, one agent, a full day in three minutes."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "device-connect-edge>=0.2.0",
+    "device-connect-agent-tools>=0.2.0",
+    "eclipse-zenoh>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "pytest-timeout>=2.0"]
+
+[project.scripts]
+sunhaus-demo = "runner.demo:main"
+sunhaus-tail = "runner.tail:main"
+
+[tool.setuptools]
+packages = ["sunhaus", "sunhaus.devices", "agent", "agent.adapters", "runner"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+timeout = 60

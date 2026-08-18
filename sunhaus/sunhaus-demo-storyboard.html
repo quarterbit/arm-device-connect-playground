@@ -307,7 +307,7 @@
     <div id="log" aria-live="polite"></div>
   </div>
 
-  <div class="foot">Storyboard for the 3-minute demo: one simulated day (06:00–22:00) compressed into 180 s. Built on <a href="https://github.com/arm/device-connect">github.com/arm/device-connect</a> — each element above runs as its own DeviceRuntime process with @rpc, @emit and @periodic behaviors. The EVs keep a telematics link to the bus while driving.</div>
+  <div class="foot">Animated storyboard of the 3-minute demo: one simulated day (06:00–22:00) compressed into 180 s. This page is scripted; the <b>runnable demo is real</b> — <code>python -m runner.demo</code> launches all eleven appliances as their own DeviceRuntime processes that discover each other over Zenoh D2D (no broker) while <code>agent-home</code> orchestrates them with real @rpc / @emit traffic. Built on <a href="https://github.com/arm/device-connect">github.com/arm/device-connect</a>. The EVs keep a telematics link to the bus while driving.</div>
 </div>
 
 <script>

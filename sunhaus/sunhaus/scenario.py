@@ -102,6 +102,23 @@ def house_baseload_kw(sim_hour: float) -> float:
     return round(load, 2)
 
 
+def day_tariff() -> "list[tuple[float, float, float, str]]":
+    """The demo day's grid tariff: (start_hour, end_hour, ct/kWh, label)."""
+    return [
+        (0.0, 6.0, 18.0, "off-peak"),
+        (6.0, 17.0, 32.0, "standard"),
+        (17.0, 21.0, 46.0, "peak"),
+        (21.0, 24.0, 18.0, "off-peak"),
+    ]
+
+
+def tariff_ct_per_kwh(sim_hour: float) -> float:
+    for start, end, ct, _ in day_tariff():
+        if start <= sim_hour < end:
+            return ct
+    return day_tariff()[-1][2]
+
+
 def ev_blue_is_home(sim_hour: float) -> bool:
     return not (EV_BLUE_DEPARTS <= sim_hour < EV_BLUE_RETURNS)
 

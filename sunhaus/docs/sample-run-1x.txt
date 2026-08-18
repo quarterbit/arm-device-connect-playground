@@ -1,0 +1,34 @@
+SUNHAUS — launching 11 devices + agent  (speed 1x, day ≈ 180s)
+
+                  · battery-01    [home_battery]  rpc: get_soc, reserve, set_mode
+                  · climate-01    [climate_sensor]  rpc: get_climate
+                  · ev-blue       [electric_vehicle]  rpc: get_soc, precondition, request_charge
+                  · ev-red        [electric_vehicle]  rpc: get_soc, precondition, request_charge
+                  · heatpump-01   [heat_pump]  rpc: get_state, grant_window, set_setpoint, start_dhw
+                  · hvac-01       [air_conditioner]  rpc: get_state, set_mode, set_setpoint
+                  · inverter-01   [pv_inverter]  rpc: get_forecast, get_production, set_export_limit
+                  · meter-01      [grid_meter]  rpc: get_power, get_tariff
+                  · wallbox-01    [ev_charger]  rpc: get_session, reserve, start_charge, stop_charge
+                  · washer-01     [washing_machine]  rpc: get_job, start_cycle
+                  · weather-01    [weather_station]  rpc: get_current, get_forecast
+[06:08] agent-home    weather forecast (rpc): night 31.0°C max · PV est 68.1 kWh
+[06:08] agent-home    PV forecast (rpc): 68.1 kWh today, peak 8.1 kW @ 12.5h
+[06:08] agent-home    orchestrating — subscribed to event(*), reacting to the house
+[06:36] agent-home    weather: sunny 21.4°C · PV est 68.1 kWh
+[08:01] agent-home    washer job 'eco40' due 17.5 → scheduled 11.75 (solar peak, +3.8h vs latest)
+[08:33] agent-home    heat pump wants 3.0 kWh → grant_window 11.5–13.0 (solar peak) [ok]
+[11:31] agent-home    invoke heatpump-01.start_dhw — heating water on sunshine [ok]
+[11:46] agent-home    invoke washer-01.start_cycle — laundry runs on PV surplus [ok]
+[12:01] agent-home    solar peak → pre-cool house to 22.5°C ahead of the hot afternoon
+[13:56] agent-home    washer done 13.92 — laundry ready hours early
+[14:21] agent-home    cloud front (own irradiance −38.0% + nowcast agree) → HVAC eco, hold battery, heat pump paused
+[15:21] agent-home    hot water ready (tank 55.1°C) — made from sunshine
+[16:49] agent-home    ev-blue heading home ETA 17.5, needs 21.2 kWh → pre-plan: 3.0kW pv_surplus@17.5 + 7.0kW off_peak@1.0; wallbox reserved
+[17:08] agent-home    grid peak band open (46.0 ct/kWh) — capping imports
+[17:40] agent-home    ev-blue plugged in → start_charge 3.0 kW from pv_surplus (matches pre-plan, zero wait) [ok]
+[20:03] agent-home    ev-red wants 78.0% by 7 → staggered to 22.5 to cap the grid peak
+[21:03] agent-home    heat pump night setback 19.0°C — house goes quiet
+[21:54] agent-home    daily stats — PV 61.5 kWh · self-consumption ~78% · battery 54.6% · washer done early · ev-blue plan on track
+[21:57] agent-home    day complete.
+
+SUNHAUS — house stopped.
