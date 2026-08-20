@@ -155,7 +155,12 @@ class PoolDriver(SunhausDriver):
 
         if self._water_temp_c >= self._target_temp_c and not self._target_reported:
             self._target_reported = True
+            equipment_changed = self._heating_on or self._filter_on or self._cover != "closed"
             self._heating_on = False
+            self._filter_on = False
+            self._cover = "closed"
+            if equipment_changed:
+                await self.state_changed(**self._state_payload())
             await self.target_reached(temp_c=round(self._water_temp_c, 1))
 
         await self.water_temperature(

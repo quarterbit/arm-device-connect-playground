@@ -108,6 +108,13 @@ async def test_pool_filter_heat_cover_and_temperature_sensor():
     d._integrate(1.0, 12.5)
     assert (await d.get_state())["temp_c"] > before
     assert "state_changed" in sink.names()
+    d._water_temp_c = d._target_temp_c
+    await d.report()
+    state = await d.get_state()
+    assert state["filter_on"] is False
+    assert state["heating_on"] is False
+    assert state["cover"] == "closed"
+    assert "target_reached" in sink.names()
 
 
 async def test_pool_requests_solar_heating_window():
