@@ -28,6 +28,7 @@ DEVICES = [
     ("sunhaus.devices.ev", ["ev-blue"]),
     ("sunhaus.devices.ev", ["ev-red"]),
     ("sunhaus.devices.heatpump", []),
+    ("sunhaus.devices.pool", []),
     ("sunhaus.devices.hvac", []),
     ("sunhaus.devices.washer", []),
     ("sunhaus.devices.climate", []),
