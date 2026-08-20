@@ -81,7 +81,7 @@
   </div>
 
   <div class="stage">
-  <svg id="scene" viewBox="0 0 1240 660" role="img" aria-label="Cutaway of a house with PV, battery, inverter, heat pump, washing machine, AC, indoor climate sensor, wallbox, two EVs, weather station and grid meter, all connected by a Device Connect bus">
+  <svg id="scene" viewBox="0 0 1240 660" role="img" aria-label="Cutaway of a house with PV, battery, inverter, heat pump, washing machine, AC, indoor climate sensor, an 8,000 litre pool, wallbox, two EVs, weather station and grid meter, all connected by a Device Connect bus">
     <!-- sky -->
     <defs>
       <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -254,6 +254,26 @@
       <text id="st-ev2" class="state" x="934" y="516">SoC 63%</text>
     </g>
 
+    <!-- ============ 8,000 L POOL ============ -->
+    <g id="g-pool">
+      <rect x="640" y="532" width="360" height="58" rx="10" fill="#102944" stroke="var(--cool)" stroke-width="2"/>
+      <rect x="646" y="538" width="348" height="46" rx="7" fill="#174A6B" opacity=".75"/>
+      <path id="pool-cover" d="M640 532 H1000" stroke="#A8BDD5" stroke-width="7" stroke-dasharray="16 5" opacity=".8"/>
+      <path d="M665 550 q18 -8 36 0 t36 0 t36 0 t36 0 t36 0 t36 0" fill="none" stroke="var(--cool)" opacity=".65"/>
+      <text class="lbl" x="650" y="524">8,000 L pool</text>
+      <text class="id" x="650" y="570">pool-01</text>
+      <text id="st-pool" class="state" x="730" y="570">23.5°C · covered</text>
+      <circle cx="1028" cy="554" r="20" fill="#0E1626" stroke="var(--msg)" stroke-width="1.5"/>
+      <circle cx="1028" cy="554" r="10" fill="none" stroke="var(--msg)"/>
+      <text class="lbl" x="1008" y="586">filter</text>
+      <rect x="1062" y="534" width="48" height="40" rx="5" fill="#0E1626" stroke="var(--heat)" stroke-width="1.5"/>
+      <path d="M1086 540 v28 M1072 554 h28" stroke="var(--heat)"/>
+      <text class="lbl" x="1056" y="586">heat pump</text>
+      <rect x="1130" y="536" width="18" height="38" rx="9" fill="#0E1626" stroke="var(--cool)"/>
+      <circle cx="1139" cy="565" r="5" fill="var(--cool)"/>
+      <text class="lbl" x="1122" y="586">sensor</text>
+    </g>
+
     <!-- ============ ENERGY FLOWS ============ -->
     <path id="f-pv"   class="flow" d="M205 240 C 200 320, 202 420, 203 486" stroke="var(--solar)"/>
     <path id="f-batt" class="flow" d="M240 522 H 254" stroke="var(--batt)"/>
@@ -262,6 +282,7 @@
     <path id="f-wb"   class="flow" d="M238 546 C 420 600, 700 600, 852 472" stroke="var(--solar)"/>
     <path id="f-heat" class="flow" d="M448 488 C 450 460, 454 430, 456 404" stroke="var(--heat)"/>
     <path id="f-wash" class="flow" d="M238 528 C 280 566, 310 566, 330 546" stroke="var(--solar)"/>
+    <path id="f-pool" class="flow" d="M238 546 C 430 610, 860 610, 1086 574" stroke="var(--solar)"/>
 
     <!-- ============ DEVICE CONNECT BUS ============ -->
     <g id="bus">
@@ -282,12 +303,14 @@
         <line x1="746" y1="470" x2="746" y2="614"/>  <!-- ev1 -->
         <line x1="863" y1="470" x2="863" y2="614"/>  <!-- wallbox -->
         <line x1="966" y1="470" x2="966" y2="614"/>  <!-- ev2 -->
+        <line x1="1139" y1="574" x2="1139" y2="614"/> <!-- pool -->
       </g>
       <g fill="var(--msg)">
         <circle cx="120" cy="614" r="4"/><circle cx="196" cy="614" r="5"/><circle cx="203" cy="614" r="4"/>
         <circle cx="282" cy="614" r="4"/><circle cx="315" cy="614" r="4"/><circle cx="354" cy="614" r="4"/>
         <circle cx="438" cy="614" r="4"/><circle cx="552" cy="614" r="4"/><circle cx="580" cy="614" r="4"/>
         <circle cx="746" cy="614" r="4"/><circle cx="863" cy="614" r="4"/><circle cx="966" cy="614" r="4"/>
+        <circle cx="1139" cy="614" r="4"/>
       </g>
     </g>
     <g id="packets"></g>
@@ -303,16 +326,16 @@
   </div>
 
   <div class="log-wrap">
-    <div class="log-head"><span>$ python -m runner.tail &nbsp;·&nbsp; subscribe("event(*)") — live message log</span><span>11 devices · 1 agent</span></div>
+    <div class="log-head"><span>$ python -m runner.tail &nbsp;·&nbsp; subscribe("event(*)") — live message log</span><span>12 devices · 1 agent</span></div>
     <div id="log" aria-live="polite"></div>
   </div>
 
-  <div class="foot">Animated storyboard of the 3-minute demo: one simulated day (06:00–22:00) compressed into 180 s. This page is scripted; the <b>runnable demo is real</b> — <code>python -m runner.demo</code> launches all eleven appliances as their own DeviceRuntime processes that discover each other over Zenoh D2D (no broker) while <code>agent-home</code> orchestrates them with real @rpc / @emit traffic. Built on <a href="https://github.com/arm/device-connect">github.com/arm/device-connect</a>. The EVs keep a telematics link to the bus while driving.</div>
+  <div class="foot">Animated storyboard of the 3-minute demo: one simulated day (06:00–22:00) compressed into 180 s. This page is scripted; the <b>runnable demo is real</b> — <code>python -m runner.demo</code> launches all twelve appliances as their own DeviceRuntime processes that discover each other over Zenoh D2D (no broker) while <code>agent-home</code> orchestrates them with real @rpc / @emit traffic. Built on <a href="https://github.com/arm/device-connect">github.com/arm/device-connect</a>. The EVs keep a telematics link to the bus while driving.</div>
 </div>
 
 <script>
 // ---- bus node x-positions ----
-const NODE = {meter:120, agent:196, inverter:203, battery:282, climate:315, washer:354, heatpump:438, hvac:552, weather:580, ev1:746, wallbox:863, ev2:966};
+const NODE = {meter:120, agent:196, inverter:203, battery:282, climate:315, washer:354, heatpump:438, hvac:552, weather:580, ev1:746, wallbox:863, ev2:966, pool:1139};
 const BUS_Y = 614;
 const COLORS = {msg:'#5AC8E8', solar:'#FFB648', batt:'#55D98A', grid:'#9B8CFF', heat:'#F4795B', cool:'#6FC3E8'};
 
@@ -332,7 +355,7 @@ const simClock = t => { const h = 6 + t*16/180; const hh=Math.floor(h), mm=Math.
 // each: t(s), dev, css color key, log text, packet {from,to,label,color}, apply() side effects
 // event names follow the real device-connect constraint: [A-Za-z0-9_-] only
 const EVENTS = [
- {t:0.5, dec:1, dev:'agent-home', c:'msg', log:'zenoh scouting… 11 peers discovered (D2D presence, no broker)', pk:{from:'agent',to:'ev2',label:'discover',color:'msg'},
+ {t:0.5, dec:1, dev:'agent-home', c:'msg', log:'zenoh scouting… 12 peers discovered (D2D presence, no broker)', pk:{from:'agent',to:'pool',label:'discover',color:'msg'},
   fx:()=>{setText('st-agent','orchestrating'); setText('st-grid','import 0.2 kW');}},
  {t:3,   dev:'weather-01', c:'msg', log:'@emit wx_forecast — sunny, max 31°C · PV estimate 28.4 kWh', pk:{from:'weather',to:'agent',label:'wx_forecast',color:'msg'},
   fx:()=>setText('st-weather','sunny 31°C')},
@@ -351,16 +374,23 @@ const EVENTS = [
   fx:()=>setText('st-hp','wants 3 kWh')},
  {t:29.5, dec:1,dev:'agent-home', c:'heat', log:'invoke("heatpump-01.grant_window") → 11:30–13:00 (solar peak)', pk:{from:'agent',to:'heatpump',label:'grant_window',color:'heat'},
   fx:()=>setText('st-hp','scheduled 11:30')},
+ {t:31, dev:'pool-01', c:'cool', log:'@emit pool_heating_request {23.5°C → 26°C, 8,000 L} — filter and heat pump ask for solar', pk:{from:'pool',to:'agent',label:'pool_heating_request',color:'cool'}},
+ {t:33, dec:1, dev:'agent-home', c:'heat', log:'invoke("pool-01.grant_heating_window") → 11:47–13:14 (solar peak)', pk:{from:'agent',to:'pool',label:'heating window',color:'heat'},
+  fx:()=>setText('st-pool','23.5°C · scheduled')},
  {t:45, dec:1,  dev:'inverter-01', c:'batt', log:'PV 4.6 kW · surplus → battery charging 2.0 kW · SoC 48%', pk:{from:'battery',to:'agent',label:'soc 48%',color:'batt'},
   fx:()=>{flow('f-batt',true); setText('st-pv','4.6 kW'); setText('st-batt','SoC 48% ▲'); soc(48);}},
  {t:62, dec:1,  dev:'agent-home', c:'heat', log:'invoke("heatpump-01.start_dhw") — heating water on sunshine', pk:{from:'agent',to:'heatpump',label:'start_dhw',color:'heat'},
   fx:()=>{flow('f-heat',true); setText('st-hp','DHW 2.4 kW');}},
+ {t:63, dec:1, dev:'agent-home', c:'heat', log:'invoke pool-01 cover open + filter + heat pump — 4.45 kW on PV surplus', pk:{from:'agent',to:'pool',label:'filter + heat',color:'heat'},
+  fx:()=>{flow('f-pool',true); $('pool-cover').setAttribute('opacity','.15'); setText('st-pool','24.0°C ▲ · heating');}},
  {t:64.7, dec:1,dev:'agent-home', c:'msg', log:'invoke("washer-01.start_cycle") — laundry runs on PV surplus', pk:{from:'agent',to:'washer',label:'start_cycle',color:'msg'},
   fx:()=>{flow('f-wash',true); setText('st-washer','washing 0.9 kW'); $('washer-drum').classList.add('spin');}},
  {t:73, dec:1,  dev:'inverter-01', c:'solar', log:'solar peak 8.1 kW · SoC 71% · agent pre-cools house for the hot afternoon', pk:{from:'agent',to:'hvac',label:'set 22.5°C',color:'cool'},
   fx:()=>{setText('st-pv','8.1 kW'); setText('st-batt','SoC 71% ▲'); soc(71); setText('st-hvac','pre-cool 22.5°C'); $('hvac-air').setAttribute('opacity','0.9'); setText('st-climate','23.9°C ↓');}},
  {t:87,  dev:'washer-01', c:'msg', log:'@emit cycle_complete — laundry ready 3¾ h before anyone is home', pk:{from:'washer',to:'agent',label:'cycle_complete',color:'msg'},
   fx:()=>{flow('f-wash',false); setText('st-washer','done ✓'); $('washer-drum').classList.remove('spin');}},
+ {t:88, dev:'pool-01', c:'cool', log:'@emit target_reached {26.0°C} — heating stops, filter cycle complete, cover closes', pk:{from:'pool',to:'agent',label:'target_reached',color:'cool'},
+  fx:()=>{flow('f-pool',false); $('pool-cover').setAttribute('opacity','.8'); setText('st-pool','26.0°C ✓ · covered');}},
  {t:90,  dev:'weather-01', c:'msg', log:'@emit nowcast_updated — own irradiance −54% + radar nowcast agree: cloud front inbound (PV −18%)', pk:{from:'weather',to:'agent',label:'nowcast_updated',color:'msg'},
   fx:()=>{$('clouds').setAttribute('opacity','0.9'); setText('st-weather','front inbound');}},
  {t:91.5,dev:'inverter-01', c:'solar', log:'@emit pv_forecast rev 2 — today 24.3 kWh (−18%)', pk:{from:'inverter',to:'agent',label:'pv_forecast r2',color:'solar'},
@@ -470,7 +500,7 @@ function logLine(t, dev, c, text){
 let T=0, playing=false, last=null, fired=new Set();
 function resetWorld(){
   fired.clear(); $('log').innerHTML=''; $('packets').innerHTML=''; live.length=0;
-  ['f-pv','f-batt','f-house','f-gridin','f-wb','f-heat','f-wash'].forEach(f=>flow(f,false));
+  ['f-pv','f-batt','f-house','f-gridin','f-wb','f-heat','f-wash','f-pool'].forEach(f=>flow(f,false));
   $('g-ev1').setAttribute('opacity','1'); $('wb-cable').setAttribute('opacity','0');
   $('ev1-port').setAttribute('opacity','0'); $('clouds').setAttribute('opacity','0');
   $('hvac-air').setAttribute('opacity','0'); $('washer-drum').classList.remove('spin');
@@ -478,6 +508,7 @@ function resetWorld(){
   setText('st-hp','standby'); setText('st-hvac','off'); setText('st-wb','idle');
   setText('st-ev1','SoC 41%'); setText('st-ev2','SoC 63%'); setText('st-weather','—'); setText('st-grid','idle');
   setText('st-washer','idle'); setText('st-climate','21.4°C');
+  setText('st-pool','23.5°C · covered'); $('pool-cover').setAttribute('opacity','.8');
   llmDecisions=0; drawMeter();
 }
 function applyUpTo(t){ // used on scrub: replay silently

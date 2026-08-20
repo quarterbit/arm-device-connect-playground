@@ -1,11 +1,12 @@
 # SUNHAUS — a Device Connect smart-home energy demo
 
-**One house. Eleven devices. One agent. A full day in three minutes.**
+**One house. Twelve devices. One agent. A full day in three minutes.**
 
 SUNHAUS is a runnable demo built on [`arm/device-connect`](https://github.com/arm/device-connect).
-Eleven ordinary household appliances — PV inverter, home battery, EV wallbox, two
+Twelve ordinary household appliances — PV inverter, home battery, EV wallbox, two
 electric cars, heat pump, air conditioner, washing machine, indoor climate sensor,
-weather station and grid meter — each run as an **independent Device Connect device
+weather station, grid meter, and an 8,000 L pool with filter, heat pump, cover, and
+water-temperature sensor — each run as an **independent Device Connect device
 process**. None of them knows about the others in advance. A home-energy agent
 discovers them over the Zenoh device-to-device bus and orchestrates a full simulated
 day: laundry and hot water shifted onto the solar peak, a cloud front handled, an
@@ -34,7 +35,7 @@ python -m runner.demo --speed 6x    # 30-second smoke run
 python -m runner.demo --tail        # also stream the live event log
 ```
 
-`runner.demo` launches all eleven device processes plus the agent, each sharing one
+`runner.demo` launches all twelve device processes plus the agent, each sharing one
 simulated-day clock through the environment. What you see is the agent's decisions as
 they happen; add `--tail` (or run `python -m runner.tail` in a second terminal) to
 watch the raw Zenoh event stream underneath.
@@ -42,17 +43,20 @@ watch the raw Zenoh event stream underneath.
 ### What a run looks like
 
 ```
-SUNHAUS — launching 11 devices + agent  (speed 1x, day ≈ 180s)
-· 11 device processes booting in Zenoh D2D mode (peer scouting, no broker)…
-[06:00] agent-home    discovered 11 devices over Zenoh D2D (no broker):
+SUNHAUS — launching 12 devices + agent  (speed 1x, day ≈ 180s)
+· 12 device processes booting in Zenoh D2D mode (peer scouting, no broker)…
+[06:00] agent-home    discovered 12 devices over Zenoh D2D (no broker):
                   · battery-01    [home_battery]  rpc: get_soc, reserve, set_mode
                   · heatpump-01   [heat_pump]     rpc: get_state, grant_window, set_setpoint, start_dhw
+                  · pool-01       [pool_system]    rpc: get_state, grant_heating_window, set_cover, set_filter
                   · … (9 more)
 [06:00] agent-home    PV forecast (rpc): 68.1 kWh today, peak 8.1 kW @ 12.5h
 [08:00] agent-home    washer job 'eco40' due 17.5 → scheduled 11.75 (solar peak, +3.8h vs latest)
 [08:30] agent-home    heat pump wants 3.0 kWh → grant_window 11.5–13.0 (solar peak) [ok]
+[09:00] agent-home    pool water 23.5°C → 26.0°C: filter + heat pump scheduled on solar [ok]
 [11:30] agent-home    invoke heatpump-01.start_dhw — heating water on sunshine [ok]
 [11:45] agent-home    invoke washer-01.start_cycle — laundry runs on PV surplus [ok]
+[11:47] agent-home    invoke pool-01 filter + heat pump — 8,000 L pool on PV surplus [ok]
 [14:00] agent-home    cloud front (own irradiance −40% + nowcast agree) → HVAC eco, heat pump paused
 [16:45] agent-home    ev-blue heading home ETA 17.5, needs 21 kWh → pre-plan: PV surplus now + off-peak 01:00
 [17:30] agent-home    ev-blue plugged in → start_charge 3.0 kW from pv_surplus (matches pre-plan, zero wait) [ok]
@@ -121,7 +125,7 @@ and `test_day.py` drives the real agent logic through a scripted day).
 ## Windows note
 
 Zenoh D2D uses UDP multicast, which Windows Defender Firewall may block on Public
-networks. If discovery finds fewer than 11 devices, allow `python.exe` through the
+networks. If discovery finds fewer than 12 devices, allow `python.exe` through the
 firewall on Private networks, or run a local Zenoh router and point every process at
 it over loopback:
 

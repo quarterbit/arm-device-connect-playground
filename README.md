@@ -9,7 +9,7 @@ iterated here in the open; whatever proves valuable gets cleaned up and promoted
 
 ## Demos
 
-- **[`sunhaus/`](sunhaus/)** — SUNHAUS, a smart-home energy demo. One house, ten Device Connect devices, one
+- **[`sunhaus/`](sunhaus/)** — SUNHAUS, a smart-home energy demo. One house, twelve Device Connect devices, one
   home-energy agent, a full simulated day compressed into three minutes.
   - [`sunhaus/CONCEPT.md`](sunhaus/CONCEPT.md) — the full concept: device roster, lifecycles, 3-minute demo
     script, repo structure, milestones.

@@ -15,6 +15,12 @@ def test_dhw_window_lands_on_solar_peak_before_deadline():
     assert w.start_hour < 12.5 and w.end_hour <= 15.0 and w.kwh == 3.0
 
 
+def test_pool_window_uses_solar_peak_and_meets_deadline():
+    w = policies.schedule_pool_window(load_kwh=8.0, deadline_hour=15.0)
+    assert w.start_hour < 12.5 < w.end_hour <= 15.0
+    assert (w.end_hour - w.start_hour) * 4.0 == w.kwh
+
+
 def test_washer_starts_at_peak_when_deadline_allows():
     # deadline far away → start at the solar peak, not at the last minute
     assert policies.schedule_washer(latest_start_hour=15.5) < 12.5

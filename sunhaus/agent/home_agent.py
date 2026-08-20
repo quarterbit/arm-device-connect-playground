@@ -72,7 +72,7 @@ class HomeAgent:
         # Give Zenoh gossip a moment to settle, then discover the full house.
         for attempt in range(12):
             house = discover("device(*)")
-            if house.get("matched", 0) >= 11:
+            if house.get("matched", 0) >= 12:
                 break
             time.sleep(1.0)
         rows = house.get("results", [])
@@ -128,6 +128,17 @@ class HomeAgent:
                              f"[{'ok' if _ok(res) else 'ERR'}]")
             return
 
+        # --- pool: filter and heat 8,000 L around the solar peak ---
+        if event == "pool_heating_request" and self._once("pool_grant"):
+            w = policies.schedule_pool_window(p["estimated_kwh"], p["deadline_hour"])
+            res = invoke("device(pool-01).function(grant_heating_window)",
+                         {"start_hour": w.start_hour, "end_hour": w.end_hour})
+            self.state["pool_start"] = w.start_hour
+            _log(self.clock, f"pool water {p['current_c']}°C → {p['target_c']}°C: "
+                             f"filter + heat pump scheduled {w.start_hour:.1f}–{w.end_hour:.1f} "
+                             f"({w.reason}) [{'ok' if _ok(res) else 'ERR'}]")
+            return
+
         # --- cloud front: eco the AC, pause the heat pump ---
         if event == "nowcast_updated" and self._once("front"):
             invoke("device(hvac-01).function(set_mode)", {"mode": "eco"})
@@ -162,6 +173,9 @@ class HomeAgent:
             return
         if event == "dhw_done":
             _log(self.clock, f"hot water ready (tank {p['tank_c']}°C) — made from sunshine")
+            return
+        if event == "target_reached" and device_id == "pool-01":
+            _log(self.clock, f"pool ready at {p['temp_c']}°C — cover closed, equipment off")
             return
         if event == "peak_warning":
             _log(self.clock, f"grid peak band open ({p['ct_per_kwh']} ct/kWh) — capping imports")
@@ -203,6 +217,13 @@ class HomeAgent:
             res = invoke("device(heatpump-01).function(start_dhw)", {})
             _log(self.clock, f"invoke heatpump-01.start_dhw — heating water on sunshine "
                              f"[{'ok' if _ok(res) else 'ERR'}]")
+        if self.state.get("pool_start") and h >= self.state["pool_start"] and self._once("pool_go"):
+            cover = invoke("device(pool-01).function(set_cover)", {"position": "open"})
+            filtering = invoke("device(pool-01).function(set_filter)", {"enabled": True})
+            heating = invoke("device(pool-01).function(set_heating)", {"enabled": True})
+            ok = all(_ok(result) for result in (cover, filtering, heating))
+            _log(self.clock, f"invoke pool-01 filter + heat pump — 8,000 L pool on PV surplus "
+                             f"[{'ok' if ok else 'ERR'}]")
 
         # Pre-cool ahead of the hot afternoon, once, near the solar peak.
         if 12.0 <= h < 13.5 and pv > 5.0 and self._once("precool"):

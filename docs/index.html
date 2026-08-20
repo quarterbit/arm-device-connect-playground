@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SUNHAUS — a Device Connect smart-home demo</title>
-<meta name="description" content="One house, eleven devices, one agent, a full day in three minutes — a real, nothing-faked demo built on arm/device-connect.">
+<meta name="description" content="One house, twelve devices, one agent, a full day in three minutes — a real, nothing-faked demo built on arm/device-connect.">
 <meta property="og:title" content="SUNHAUS — a Device Connect smart-home demo">
-<meta property="og:description" content="Eleven appliances discover each other over Zenoh D2D (no broker); a home-energy agent orchestrates a whole day. Real protocol, real decisions.">
+<meta property="og:description" content="Twelve appliances discover each other over Zenoh D2D (no broker); a home-energy agent orchestrates a whole day. Real protocol, real decisions.">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -104,7 +104,7 @@
   <div class="wrap">
     <div class="eyebrow">arm/device-connect · zenoh device-to-device · zero brokers</div>
     <h1>SUNHAUS <span style="color:var(--faint)">·</span> a <span class="dc">Device&nbsp;Connect</span><br>smart-home demo</h1>
-    <p class="lede">One house. Eleven appliances. One agent. <b>A full day in three minutes.</b>
+    <p class="lede">One house. Twelve appliances. One agent. <b>A full day in three minutes.</b>
       Every device is its own process; none knows about the others in advance. A home-energy
       agent discovers them over Zenoh and orchestrates the whole day — laundry and hot water on
       the solar peak, a cloud front handled, an EV charged before it reaches the driveway.</p>
@@ -113,7 +113,7 @@
       <span class="badge on">● real Zenoh D2D discovery</span>
       <span class="badge on">● real @rpc / @emit traffic</span>
       <span class="badge">simulated hardware only</span>
-      <span class="badge">17 tests green</span>
+      <span class="badge">20 tests green</span>
     </div>
     <div class="cta">
       <a class="btn primary" href="#storyboard">▶ Watch the storyboard</a>
@@ -127,7 +127,7 @@
   <div class="wrap">
     <h2><span class="n">01</span>The house, in motion</h2>
     <p class="sub">An animated storyboard of the three-minute day. Press play. This page is scripted —
-      but the <b style="color:var(--ink)">runnable demo underneath it is real</b>: the same eleven
+      but the <b style="color:var(--ink)">runnable demo underneath it is real</b>: the same twelve
       appliances as real processes, discovered over a real bus, driven by a real agent.</p>
     <div class="frame">
       <div class="frame-bar">
@@ -162,7 +162,7 @@
 
 <section id="cast">
   <div class="wrap">
-    <h2><span class="n">03</span>The cast — eleven devices + one agent</h2>
+    <h2><span class="n">03</span>The cast — twelve devices + one agent</h2>
     <p class="sub">Deliberately ordinary household gear. The point is that <i>normal</i> appliances
       benefit from a common device bus — and that devices never call each other; only the agent does.</p>
     <div class="roster">
@@ -172,6 +172,7 @@
       <div class="chip"><div class="id">ev-blue</div><div class="ty">electric_vehicle</div><div class="role">Commutes; announces <span class="mono">heading_home</span> from the road</div></div>
       <div class="chip"><div class="id">ev-red</div><div class="ty">electric_vehicle</div><div class="role">Stays home; evening top-up request</div></div>
       <div class="chip"><div class="id">heatpump-01</div><div class="ty">heat_pump</div><div class="role">Asks for a cheap DHW window, heats on grant</div></div>
+      <div class="chip"><div class="id">pool-01</div><div class="ty">pool_system</div><div class="role">8,000 L pool: filter, heat pump, cover, water-temperature sensor</div></div>
       <div class="chip"><div class="id">hvac-01</div><div class="ty">air_conditioner</div><div class="role">Pre-cool / eco / off, on agent command</div></div>
       <div class="chip"><div class="id">washer-01</div><div class="ty">washing_machine</div><div class="role">Loaded with a "done by 17:30" deadline</div></div>
       <div class="chip"><div class="id">climate-01</div><div class="ty">climate_sensor</div><div class="role">Indoor temp; cools when it hears the AC</div></div>
@@ -188,13 +189,15 @@
     <p class="sub">A real captured run at 1× — every <span class="ok">[ok]</span> is a real RPC round-trip
       over real Zenoh D2D. Nothing here is scripted.</p>
     <div class="term">
-      <div class="term-head"><span>$ python -m runner.demo &nbsp;·&nbsp; agent-home decisions</span><span>11 devices · 1 agent</span></div>
-<pre><span class="t">[06:00]</span> discovered <span class="ev">11 devices</span> over Zenoh D2D (no broker)
+      <div class="term-head"><span>$ python -m runner.demo &nbsp;·&nbsp; agent-home decisions</span><span>12 devices · 1 agent</span></div>
+<pre><span class="t">[06:00]</span> discovered <span class="ev">12 devices</span> over Zenoh D2D (no broker)
 <span class="t">[06:00]</span> PV forecast (rpc): 68.1 kWh today, peak 8.1 kW @ 12:30
 <span class="t">[08:00]</span> washer 'eco40' due 17:30 → scheduled <span class="hl">11:45</span> (solar peak, +3.8h margin)
 <span class="t">[08:30]</span> heat pump wants 3.0 kWh → grant_window 11:30–13:00 <span class="ok">[ok]</span>
+<span class="t">[09:00]</span> pool 23.5°C → 26°C: filter + heat pump scheduled on solar <span class="ok">[ok]</span>
 <span class="t">[11:30]</span> invoke heatpump-01.start_dhw — hot water on sunshine <span class="ok">[ok]</span>
 <span class="t">[11:45]</span> invoke washer-01.start_cycle — laundry on PV surplus <span class="ok">[ok]</span>
+<span class="t">[11:47]</span> invoke pool-01 filter + heat pump — 8,000 L pool on PV surplus <span class="ok">[ok]</span>
 <span class="t">[12:00]</span> solar peak → pre-cool house to 22.5°C for the hot afternoon
 <span class="t">[14:00]</span> cloud front (own irradiance <span class="hl">−38%</span> + nowcast agree) → HVAC eco, heat pump paused
 <span class="t">[16:45]</span> ev-blue heading home ETA 17:30, needs 21 kWh → pre-plan: PV surplus now + off-peak 01:00
@@ -205,7 +208,7 @@
     <div class="kpis">
       <div class="kpi solar"><div class="v">61.5 kWh</div><div class="k">PV generated</div></div>
       <div class="kpi batt"><div class="v">~78%</div><div class="k">self-consumption</div></div>
-      <div class="kpi msg"><div class="v">11</div><div class="k">devices, one agent</div></div>
+      <div class="kpi msg"><div class="v">12</div><div class="k">devices, one agent</div></div>
       <div class="kpi"><div class="v">$0.00</div><div class="k">LLM cost, policy mode (≈8¢/day even fully LLM-driven)</div></div>
     </div>
   </div>
@@ -233,7 +236,7 @@ python -m runner.demo --tail     <span class="c"># + live bus log</span></pre>
 <span class="c"># event traffic, subscribe("event(*)")</span>
 python -m runner.tail
 
-<span class="c"># 17 tests, no bus needed</span>
+<span class="c"># 20 tests, no bus needed</span>
 python -m pytest</pre>
       </div>
     </div>
@@ -243,11 +246,11 @@ python -m pytest</pre>
 <section id="how">
   <div class="wrap">
     <h2><span class="n">06</span>How it fits together</h2>
-    <p class="sub">Twelve processes on one machine, no shared memory, no coordinator — only a Zenoh
+    <p class="sub">Thirteen processes on one machine, no shared memory, no coordinator — only a Zenoh
       device-to-device bus and a simulated-day clock each derives locally.</p>
     <div class="flowbox">
 <pre>   inverter-01   battery-01   wallbox-01   ev-blue   ev-red   heatpump-01
-   hvac-01       washer-01    climate-01   weather-01   meter-01
+   hvac-01       washer-01    climate-01   weather-01   meter-01   pool-01
         │   each is a DeviceRuntime — a Zenoh peer   │
         └───────────────┬────────────────┬───────────┘
                         │  Zenoh D2D bus  │      (multicast scouting, no broker)

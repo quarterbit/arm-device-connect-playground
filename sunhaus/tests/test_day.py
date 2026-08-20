@@ -82,6 +82,13 @@ def test_full_day_orchestration(agent_and_calls):
     ag.on_event("heatpump-01", "window_request", {"load_kwh": 3.0, "deadline_hour": 15.0})
     assert any("grant_window" in s for s in _selectors(calls))
 
+    # 09:00 pool controller asks to filter and heat its 8,000 L of water
+    ag.clock.h = 9.0
+    ag.on_event("pool-01", "pool_heating_request",
+                {"current_c": 23.5, "target_c": 26.0, "estimated_kwh": 5.8,
+                 "deadline_hour": 15.0})
+    assert any("pool-01" in s and "grant_heating_window" in s for s in _selectors(calls))
+
     # midday: PV high → the scheduled loads fire and the house pre-cools
     ag.on_event("inverter-01", "production", {"kw": 8.1})
     at(11.9)   # washer start time reached
@@ -89,6 +96,8 @@ def test_full_day_orchestration(agent_and_calls):
     sels = _selectors(calls)
     assert any("washer-01" in s and "start_cycle" in s for s in sels)
     assert any("heatpump-01" in s and "start_dhw" in s for s in sels)
+    assert any("pool-01" in s and "set_filter" in s for s in sels)
+    assert any("pool-01" in s and "set_heating" in s for s in sels)
     assert any("hvac-01" in s and "pre_cool" not in s and "set_mode" in s for s in sels) or \
            any("set_mode" in s for s in sels)
 

@@ -8,11 +8,11 @@ derived locally from two environment values (`SUNHAUS_SIM_EPOCH`,
 `SUNHAUS_SIM_SPEED`).
 
 ```
-   ┌───────────── one machine, twelve processes ──────────────┐
+   ┌──────────── one machine, thirteen processes ─────────────┐
    │                                                          │
    │   inverter-01   battery-01   wallbox-01   ev-blue        │
    │   ev-red        heatpump-01  hvac-01      washer-01      │
-   │   climate-01    weather-01   meter-01                    │
+   │   climate-01    weather-01   meter-01      pool-01       │
    │        │  each is a DeviceRuntime (Zenoh peer)  │        │
    │        └──────────────┬───────────────┬─────────┘        │
    │                       │  Zenoh D2D bus │                  │
@@ -59,7 +59,8 @@ agent ──invoke grant_window(11:30–13:00)──▶ heatpump-01        (@rpc
 agent ──invoke start_dhw()──▶ heatpump-01                      (@rpc)
 ```
 
-The same shape drives the washer (`job_queued` → `start_cycle`) and the EV
+The same shape drives the pool (`pool_heating_request` → `grant_heating_window`
+→ filter and heat), washer (`job_queued` → `start_cycle`) and EV
 (`heading_home` → charge plan → `start_charge`).
 
 **Reliability over best-effort D2D.** Zenoh D2D pub/sub is best-effort: a single
@@ -89,7 +90,7 @@ other's *public* events:
 
 | Real | Simulated |
 |---|---|
-| `DeviceRuntime` processes, one per device | The sun, sky, outdoor temperature |
+| `DeviceRuntime` processes, one per device | The sun, sky, outdoor and pool-water temperature |
 | Zenoh D2D discovery (presence, scouting) | Each device's internal physics |
 | Every `@rpc` command and its reply | Car battery chemistry, PV output curve |
 | Every `@emit` event on the bus | The passage of the day (compressed clock) |

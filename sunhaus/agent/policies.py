@@ -27,6 +27,15 @@ def schedule_dhw_window(load_kwh: float, deadline_hour: float,
                   kwh=load_kwh, reason="solar peak")
 
 
+def schedule_pool_window(load_kwh: float, deadline_hour: float,
+                        heater_kw: float = 4.0, peak_hour: float = 12.5) -> Window:
+    """Place pool filtration and heat-pump work around the solar peak."""
+    duration_h = max(1.0, load_kwh / heater_kw)
+    start = min(peak_hour - duration_h / 2, deadline_hour - duration_h)
+    return Window(start_hour=round(start, 2), end_hour=round(start + duration_h, 2),
+                  kwh=load_kwh, reason="solar peak")
+
+
 def schedule_washer(latest_start_hour: float, peak_hour: float = 12.5) -> float:
     """Start the washer at the solar peak if that still meets the deadline,
     otherwise at the latest moment that does."""

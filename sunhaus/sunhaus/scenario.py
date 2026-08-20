@@ -21,6 +21,12 @@ PV_KWP = 9.6  # roof array size
 PV_PEAK_KW = 8.1  # what actually shows at solar peak on the demo day
 BATTERY_KWH = 12.0
 WALLBOX_MAX_KW = 11.0
+POOL_VOLUME_L = 8_000
+POOL_INITIAL_TEMP_C = 23.5
+POOL_TARGET_TEMP_C = 26.0
+POOL_HEATER_KW = 4.0
+POOL_HEATER_COP = 4.0
+POOL_HEAT_DEADLINE = 15.0
 
 # The one plot twist of the day: a cloud front passes in the afternoon.
 CLOUD_FRONT_START = 14.0
@@ -86,6 +92,14 @@ def outdoor_temp_c(sim_hour: float) -> float:
     if CLOUD_FRONT_START < sim_hour < CLOUD_FRONT_END + 1.0:
         t -= 1.5 * _bump(sim_hour, CLOUD_FRONT_START, CLOUD_FRONT_PEAK, CLOUD_FRONT_END + 1.0)
     return round(t, 1)
+
+
+def pool_heat_demand_kwh(water_temp_c: float,
+                         target_temp_c: float = POOL_TARGET_TEMP_C) -> float:
+    """Electricity needed by the pool heat pump to reach its target."""
+    thermal_kwh_per_c = POOL_VOLUME_L * 4.186 / 3600.0
+    thermal_kwh = max(0.0, target_temp_c - water_temp_c) * thermal_kwh_per_c
+    return round(thermal_kwh / POOL_HEATER_COP, 1)
 
 
 def house_baseload_kw(sim_hour: float) -> float:

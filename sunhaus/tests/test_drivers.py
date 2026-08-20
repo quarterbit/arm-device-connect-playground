@@ -21,6 +21,7 @@ from sunhaus.devices.heatpump import HeatPumpDriver
 from sunhaus.devices.hvac import AirConditionerDriver
 from sunhaus.devices.inverter import PvInverterDriver
 from sunhaus.devices.meter import GridMeterDriver
+from sunhaus.devices.pool import PoolDriver
 from sunhaus.devices.wallbox import EvChargerDriver
 from sunhaus.devices.washer import WashingMachineDriver
 
@@ -92,6 +93,38 @@ async def test_heatpump_request_grant_start():
     assert g["ok"] and (await d.get_state())["state"] == "scheduled"
     await d.start_dhw()
     assert (await d.get_state())["state"] == "heating_dhw"
+
+
+async def test_pool_filter_heat_cover_and_temperature_sensor():
+    d = PoolDriver()
+    sink = _attach(d)
+    state = await d.get_state()
+    assert state["volume_l"] == 8_000
+    assert (await d.set_heating(True))["ok"] is False
+    assert (await d.set_cover("open"))["ok"]
+    assert (await d.set_filter(True))["ok"]
+    assert (await d.set_heating(True))["ok"]
+    before = (await d.get_state())["temp_c"]
+    d._integrate(1.0, 12.5)
+    assert (await d.get_state())["temp_c"] > before
+    assert "state_changed" in sink.names()
+    d._water_temp_c = d._target_temp_c
+    await d.report()
+    state = await d.get_state()
+    assert state["filter_on"] is False
+    assert state["heating_on"] is False
+    assert state["cover"] == "closed"
+    assert "target_reached" in sink.names()
+
+
+async def test_pool_requests_solar_heating_window():
+    d = PoolDriver()
+    sink = _attach(d)
+    d.clock = type("Clock", (), {"sim_hour": lambda self: 9.0})()
+    d._last_hour = 9.0
+    await d.report()
+    assert "pool_heating_request" in sink.names()
+    assert "water_temperature" in sink.names()
 
 
 async def test_hvac_modes():
