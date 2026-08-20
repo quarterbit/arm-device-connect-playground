@@ -24,13 +24,13 @@ Full concept: [`sunhaus/CONCEPT.md`](sunhaus/CONCEPT.md) · How-to + what's-real
 
 SUNHAUS is a **real, nothing-faked** demo, verified end-to-end on this Windows box:
 
-- ✅ 11 device drivers in `sunhaus/sunhaus/devices/` — each a real `DeviceRuntime` process
-  (inverter, battery, wallbox, ev-blue/ev-red, heatpump, hvac, washer, climate, weather, meter).
+- ✅ 12 device drivers in `sunhaus/sunhaus/devices/` — each a real `DeviceRuntime` process
+  (inverter, battery, wallbox, ev-blue/ev-red, heatpump, pool, hvac, washer, climate, weather, meter).
 - ✅ Real Zenoh D2D discovery (multicast peer scouting, no broker), real `@rpc`/`@emit`/`@periodic`/`@on`.
 - ✅ `agent/home_agent.py` + `agent/policies.py` — discovers the house, subscribes to `event(*)`,
   drives devices with real `invoke()`. Deterministic policy code, zero LLM tokens.
-- ✅ `runner/demo.py` (launch all 12 processes, `--speed`/`--tail`) + `runner/tail.py` (live bus log).
-- ✅ 17 tests pass (`pytest`): per-driver, policy, and a hermetic full-day orchestration test.
+- ✅ `runner/demo.py` (launch all 13 processes, `--speed`/`--tail`) + `runner/tail.py` (live bus log).
+- ✅ 20 tests pass (`pytest`): per-driver, policy, and a hermetic full-day orchestration test.
 - ✅ Full 1×/3×/6× live runs succeed; captured transcript in `sunhaus/docs/sample-run-1x.txt`.
 - ✅ `sunhaus/pyproject.toml` (installable; `sunhaus-demo` / `sunhaus-tail` scripts), README, architecture doc.
 
@@ -42,7 +42,7 @@ cd sunhaus
 python -m runner.demo               # 3-minute day (1x)
 python -m runner.demo --speed 6x    # 30-second smoke run
 python -m runner.demo --tail        # also stream the live event log
-python -m pytest                    # 17 tests, no bus needed
+python -m pytest                    # 20 tests, no bus needed
 ```
 
 ## Hard-won API facts (verified against the v0.2.5 source + live runs)

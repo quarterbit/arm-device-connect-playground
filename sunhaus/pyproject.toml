@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sunhaus"
 version = "0.1.0"
-description = "A Device Connect smart-home energy demo: one house, eleven devices, one agent, a full day in three minutes."
+description = "A Device Connect smart-home energy demo: one house, twelve devices, one agent, a full day in three minutes."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

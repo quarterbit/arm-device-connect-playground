@@ -1,8 +1,8 @@
 # SUNHAUS — a Device Connect smart-home energy demo
 
-**One house. Eleven devices. One agent. Three minutes.**
+**One house. Twelve devices. One agent. Three minutes.**
 
-SUNHAUS is a demo built on [`arm/device-connect`](https://github.com/arm/device-connect) that shows a whole household — PV inverter, battery, wallbox, two EVs, heat pump, air conditioning, washing machine, indoor climate sensor, weather station and grid meter — running as independent Device Connect devices. Each device is its own process with its own lifecycle. None of them knows about the others in advance. A home-energy agent discovers them over the Zenoh D2D bus and orchestrates a full simulated day, compressed into a 3-minute demo.
+SUNHAUS is a demo built on [`arm/device-connect`](https://github.com/arm/device-connect) that shows a whole household — PV inverter, battery, wallbox, two EVs, heat pump, air conditioning, washing machine, indoor climate sensor, weather station, grid meter and an 8,000 L pool system — running as independent Device Connect devices. Each device is its own process with its own lifecycle. None of them knows about the others in advance. A home-energy agent discovers them over the Zenoh D2D bus and orchestrates a full simulated day, compressed into a 3-minute demo.
 
 The pitch in one sentence: *plug an appliance into the network and every AI agent can immediately find it, ask it questions, and coordinate it with everything else in the house.*
 
@@ -40,7 +40,7 @@ Local development runs with `DEVICE_CONNECT_ALLOW_INSECURE=true`; the hardened v
 
 ## 4. The cast — device roster
 
-Eleven devices plus one agent. Every device is a separate Python process (`python -m sunhaus.devices.<name>` or one `docker compose up`). Deliberately ordinary appliances — the point is that *normal* household gear benefits from a common device bus.
+Twelve devices plus one agent. Every device is a separate Python process (`python -m sunhaus.devices.<name>` or one `docker compose up`). Deliberately ordinary appliances — the point is that *normal* household gear benefits from a common device bus.
 
 | device_id | device_type | Key `@rpc` | Key `@emit` events | `@periodic` |
 |---|---|---|---|---|
@@ -49,6 +49,7 @@ Eleven devices plus one agent. Every device is a separate Python process (`pytho
 | `wallbox-01` | `ev_charger` | `start_charge(kw)`, `stop_charge()`, `get_session()` | `plug_connected`, `plug_disconnected`, `session_complete` | session meter every 5 s |
 | `ev-blue`, `ev-red` | `electric_vehicle` | `get_soc()`, `request_charge(target_pct, by_hour)`, `precondition(temp_c)` | `departed`, **`heading_home`** (ETA + energy it intends to charge, sent from the road via telematics), `arrived`, `target_reached` | SoC drift while driving |
 | `heatpump-01` | `heat_pump` | `start_dhw()`, `set_setpoint(c)`, `grant_window(start, end, kwh)` | `window_request`, `dhw_done`, `setback_entered` | tank temperature every 10 s |
+| `pool-01` | `pool_system` | `get_state()`, `grant_heating_window(start, end)`, `set_filter(enabled)`, `set_heating(enabled)`, `set_cover(position)` | `pool_heating_request`, `state_changed`, `target_reached` | water temperature and equipment state |
 | `hvac-01` | `air_conditioner` | `set_mode(cool\|eco\|off)`, `set_setpoint(c)` | `mode_changed`, `comfort_violation` | power telemetry every 10 s |
 | `washer-01` | `washing_machine` | `get_job()`, `start_cycle()` | `job_queued` (program, est. kWh, **ready_by** deadline set by the owner), `cycle_started`, `cycle_complete` | cycle meter while running |
 | `climate-01` | `climate_sensor` | `get_climate()` | `comfort_alert` | indoor temp/humidity every 10 s |
@@ -85,6 +86,7 @@ wallbox-01:   IDLE → PLUGGED → NEGOTIATING → CHARGING ⇄ PAUSED → COMPL
 ev-*:         HOME_PLUGGED → DEPARTING → DRIVING → HEADING_HOME → ARRIVING → HOME_PLUGGED
 washer-01:    IDLE → LOADED → QUEUED → RUNNING → DONE
 heatpump-01:  STANDBY → SCHEDULED → HEATING_DHW → STANDBY → NIGHT_SETBACK
+pool-01:      COVERED → SCHEDULED → FILTERING + HEATING → TARGET_REACHED → COVERED
 hvac-01:      OFF → PRE_COOL → COMFORT ⇄ ECO → OFF
 climate-01:   BOOT → OBSERVING (room model follows outdoor temp + hvac events)
 weather-01:   BOOT → OBSERVING (own sensors fused with internet forecast/nowcast)
@@ -98,15 +100,17 @@ One simulated day. Times below are demo-seconds / simulated clock. This is exact
 
 | t | sim | Beat | On the bus |
 |---|---|---|---|
-| 0:00 | 06:00 | All eleven processes boot; Zenoh presence; agent discovers the full house | `discover` fan-out, presence replies |
+| 0:00 | 06:00 | All twelve processes boot; Zenoh presence; agent discovers the full house | `discover` fan-out, presence replies |
 | 0:03 | 06:30 | Weather station publishes forecast: sunny, 31 °C, ~28.4 kWh PV expected | `wx_forecast` |
 | 0:06–0:11 | 07:00 | Inverter emits day forecast; sunrise ramp begins; battery at 35 % | `pv_forecast`, telemetry |
 | 0:14 | 07:15 | ev-blue departs (telematics link to the bus stays up); wallbox emits unplug | `departed`, `plug_disconnected` |
 | 0:22 | 08:00 | Washer loaded before the owner leaves: *eco 40°, ready by 17:30* — agent schedules it into the solar peak (11:45, done 13:45, 3¾ h margin) | `job_queued` → reply |
 | 0:28 | 08:30 | Heat pump *asks* for a cheap 3 kWh window; agent grants 11:30–13:00 | `window_request` → `grant_window` |
+| 0:31 | 09:00 | The 8,000 L pool asks to filter and heat from 23.5 °C to 26 °C; agent grants a solar-peak window | `pool_heating_request` → `grant_heating_window` |
 | 0:45 | 10:00 | Surplus flows to battery (SoC 48 %) | telemetry |
 | 1:02 | 11:30 | Agent invokes `start_dhw` — hot water made from sunshine | `invoke` |
 | 1:05 | 11:45 | Agent invokes `start_cycle` — laundry runs on PV surplus | `invoke` |
+| 1:03–1:28 | 11:47–13:14 | Pool cover opens; filter and heat pump run on PV surplus; water sensor reaches 26 °C | `set_cover`, `set_filter`, `set_heating`, telemetry |
 | 1:13 | 12:30 | Solar peak 8.1 kW; agent pre-cools house ahead of the hot afternoon; indoor sensor confirms | `set 22.5°C`, climate telemetry |
 | 1:27 | 13:45 | Washer done — hours before anyone is home | `cycle_complete` |
 | 1:30 | 14:00 | **Plot twist:** weather station's own irradiance drop + internet radar nowcast agree a cloud front is inbound; inverter cuts forecast −18 %; agent flips HVAC to eco and pauses the heat pump | `nowcast_updated`, `pv_forecast` rev 2, replan |
@@ -195,7 +199,7 @@ git clone https://github.com/<you>/sunhaus && cd sunhaus
 
 # terminal 1..n, or simply:
 DEVICE_CONNECT_ALLOW_INSECURE=true python -m runner.demo --speed 1x
-# → 11 devices boot in D2D mode, agent discovers them, the day begins
+# → 12 devices boot in D2D mode, agent discovers them, the day begins
 ```
 
 On Windows, if multicast scouting is blocked by the firewall, run a local Zenoh router (`docker run -p7447:7447 eclipse/zenoh`) and set `ZENOH_CONNECT=tcp/localhost:7447` + `DEVICE_CONNECT_DISCOVERY_MODE=d2d` — same presence-based discovery, loopback transport.
@@ -205,7 +209,7 @@ On Windows, if multicast scouting is blocked by the firewall, run a local Zenoh 
 | # | Milestone | Definition of done |
 |---|---|---|
 | M0 | Skeleton | Repo, CI (pytest on the unit suites), simclock + scenario, one device (`inverter-01`) discoverable and invokable per the upstream quick start |
-| M1 | Full cast | All eleven drivers with lifecycles + telemetry; `discover()` returns the complete house |
+| M1 | Full cast | All twelve drivers with lifecycles + telemetry; `discover()` returns the complete house |
 | M2 | The day | Scripted 3-minute day runs end-to-end from `runner/demo.py`; log pane matches the storyboard beats |
 | M3 | Real agent | Replace the script with the planning agent; cloud-front replan, washer ready-by scheduling and EV pre-planning emerge from policy, not hard-coding |
 | M4 | Show floor | Storyboard HTML consumes live bus events (websocket bridge); chaos keys; MCP adapter so a chat agent can drive the house |
