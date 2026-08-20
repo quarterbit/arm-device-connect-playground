@@ -175,7 +175,7 @@ class HomeAgent:
             _log(self.clock, f"hot water ready (tank {p['tank_c']}°C) — made from sunshine")
             return
         if event == "target_reached" and device_id == "pool-01":
-            _log(self.clock, f"pool ready at {p['temp_c']}°C — cover closes after filtration")
+            _log(self.clock, f"pool ready at {p['temp_c']}°C — cover closed, equipment off")
             return
         if event == "peak_warning":
             _log(self.clock, f"grid peak band open ({p['ct_per_kwh']} ct/kWh) — capping imports")
